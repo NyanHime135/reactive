@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -196,7 +196,7 @@ namespace System.Reactive.Linq
 
         #region + ElementAtOrDefault +
 
-        public virtual IObservable<TSource> ElementAtOrDefault<TSource>(IObservable<TSource> source, int index)
+        public virtual IObservable<TSource?> ElementAtOrDefault<TSource>(IObservable<TSource> source, int index)
         {
             return new ElementAtOrDefault<TSource>(source, index);
         }
@@ -219,12 +219,12 @@ namespace System.Reactive.Linq
 
         #region + FirstAsyncOrDefaultAsync +
 
-        public virtual IObservable<TSource> FirstOrDefaultAsync<TSource>(IObservable<TSource> source)
+        public virtual IObservable<TSource?> FirstOrDefaultAsync<TSource>(IObservable<TSource> source)
         {
             return new FirstOrDefaultAsync<TSource>.Sequence(source);
         }
 
-        public virtual IObservable<TSource> FirstOrDefaultAsync<TSource>(IObservable<TSource> source, Func<TSource, bool> predicate)
+        public virtual IObservable<TSource?> FirstOrDefaultAsync<TSource>(IObservable<TSource> source, Func<TSource, bool> predicate)
         {
             return new FirstOrDefaultAsync<TSource>.Predicate(source, predicate);
         }
@@ -256,12 +256,12 @@ namespace System.Reactive.Linq
 
         #region + LastOrDefaultAsync +
 
-        public virtual IObservable<TSource> LastOrDefaultAsync<TSource>(IObservable<TSource> source)
+        public virtual IObservable<TSource?> LastOrDefaultAsync<TSource>(IObservable<TSource> source)
         {
             return new LastOrDefaultAsync<TSource>.Sequence(source);
         }
 
-        public virtual IObservable<TSource> LastOrDefaultAsync<TSource>(IObservable<TSource> source, Func<TSource, bool> predicate)
+        public virtual IObservable<TSource?> LastOrDefaultAsync<TSource>(IObservable<TSource> source, Func<TSource, bool> predicate)
         {
             return new LastOrDefaultAsync<TSource>.Predicate(source, predicate);
         }
@@ -602,12 +602,12 @@ namespace System.Reactive.Linq
 
         #region + SingleOrDefaultAsync +
 
-        public virtual IObservable<TSource> SingleOrDefaultAsync<TSource>(IObservable<TSource> source)
+        public virtual IObservable<TSource?> SingleOrDefaultAsync<TSource>(IObservable<TSource> source)
         {
             return new SingleOrDefaultAsync<TSource>.Sequence(source);
         }
 
-        public virtual IObservable<TSource> SingleOrDefaultAsync<TSource>(IObservable<TSource> source, Func<TSource, bool> predicate)
+        public virtual IObservable<TSource?> SingleOrDefaultAsync<TSource>(IObservable<TSource> source, Func<TSource, bool> predicate)
         {
             return new SingleOrDefaultAsync<TSource>.Predicate(source, predicate);
         }
@@ -730,21 +730,25 @@ namespace System.Reactive.Linq
         #region + ToDictionary +
 
         public virtual IObservable<IDictionary<TKey, TElement>> ToDictionary<TSource, TKey, TElement>(IObservable<TSource> source, Func<TSource, TKey> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer)
+            where TKey : notnull
         {
             return new ToDictionary<TSource, TKey, TElement>(source, keySelector, elementSelector, comparer);
         }
 
         public virtual IObservable<IDictionary<TKey, TElement>> ToDictionary<TSource, TKey, TElement>(IObservable<TSource> source, Func<TSource, TKey> keySelector, Func<TSource, TElement> elementSelector)
+            where TKey : notnull
         {
             return new ToDictionary<TSource, TKey, TElement>(source, keySelector, elementSelector, EqualityComparer<TKey>.Default);
         }
 
         public virtual IObservable<IDictionary<TKey, TSource>> ToDictionary<TSource, TKey>(IObservable<TSource> source, Func<TSource, TKey> keySelector, IEqualityComparer<TKey> comparer)
+            where TKey : notnull
         {
             return new ToDictionary<TSource, TKey, TSource>(source, keySelector, x => x, comparer);
         }
 
         public virtual IObservable<IDictionary<TKey, TSource>> ToDictionary<TSource, TKey>(IObservable<TSource> source, Func<TSource, TKey> keySelector)
+            where TKey : notnull
         {
             return new ToDictionary<TSource, TKey, TSource>(source, keySelector, x => x, EqualityComparer<TKey>.Default);
         }

@@ -1,12 +1,11 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Linq.ObservableImpl;
-using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,12 +19,14 @@ namespace System.Reactive.Threading.Tasks
         private sealed class SlowTaskObservable : IObservable<Unit>
         {
             private readonly Task _task;
-            private readonly IScheduler _scheduler;
+            private readonly IScheduler? _scheduler;
+            private readonly bool _ignoreExceptionsAfterUnsubscribe;
 
-            public SlowTaskObservable(Task task, IScheduler scheduler)
+            public SlowTaskObservable(Task task, IScheduler? scheduler, bool ignoreExceptionsAfterUnsubscribe)
             {
                 _task = task;
                 _scheduler = scheduler;
+                _ignoreExceptionsAfterUnsubscribe = ignoreExceptionsAfterUnsubscribe;
             }
 
             public IDisposable Subscribe(IObserver<Unit> observer)
@@ -39,16 +40,23 @@ namespace System.Reactive.Threading.Tasks
                 var options = GetTaskContinuationOptions(_scheduler);
 
                 if (_scheduler == null)
-                    _task.ContinueWith((t, subjectObject) => t.EmitTaskResult((IObserver<Unit>)subjectObject), observer, cts.Token, options, TaskScheduler.Current);
+                {
+                    _task.ContinueWith(static (t, subjectObject) => t.EmitTaskResult((IObserver<Unit>)subjectObject!), observer, cts.Token, options, TaskScheduler.Current);
+                }
                 else
                 {
                     _task.ContinueWithState(
-                        (task, tuple) => tuple.@this._scheduler.ScheduleAction(
+                        static (task, tuple) => tuple.scheduler.ScheduleAction(
                             (task, tuple.observer),
-                            tuple2 => tuple2.task.EmitTaskResult(tuple2.observer)),
-                        (@this: this, observer),
-                        cts.Token,
-                        options);
+                            static tuple2 => tuple2.task.EmitTaskResult(tuple2.observer)),
+                        (scheduler: _scheduler, observer),
+                        options,
+                        cts.Token);
+                }
+
+                if (_ignoreExceptionsAfterUnsubscribe)
+                {
+                    _task.ContinueWith(t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted);
                 }
 
                 return cts;
@@ -58,12 +66,14 @@ namespace System.Reactive.Threading.Tasks
         private sealed class SlowTaskObservable<TResult> : IObservable<TResult>
         {
             private readonly Task<TResult> _task;
-            private readonly IScheduler _scheduler;
+            private readonly IScheduler? _scheduler;
+            private readonly bool _ignoreExceptionsAfterUnsubscribe;
 
-            public SlowTaskObservable(Task<TResult> task, IScheduler scheduler)
+            public SlowTaskObservable(Task<TResult> task, IScheduler? scheduler, bool ignoreExceptionsAfterUnsubscribe)
             {
                 _task = task;
                 _scheduler = scheduler;
+                _ignoreExceptionsAfterUnsubscribe = ignoreExceptionsAfterUnsubscribe;
             }
 
             public IDisposable Subscribe(IObserver<TResult> observer)
@@ -77,21 +87,29 @@ namespace System.Reactive.Threading.Tasks
                 var options = GetTaskContinuationOptions(_scheduler);
 
                 if (_scheduler == null)
-                    _task.ContinueWith((t, subjectObject) => t.EmitTaskResult((IObserver<TResult>)subjectObject), observer, cts.Token, options, TaskScheduler.Current);
+                {
+                    _task.ContinueWith(static (t, subjectObject) => t.EmitTaskResult((IObserver<TResult>)subjectObject!), observer, cts.Token, options, TaskScheduler.Current);
+                }
                 else
                 {
                     _task.ContinueWithState(
-                        (task, tuple) => tuple.@this._scheduler.ScheduleAction(
+                        static (task, tuple) => tuple.scheduler.ScheduleAction(
                             (task, tuple.observer),
-                            tuple2 => tuple2.task.EmitTaskResult(tuple2.observer)),
-                        (@this: this, observer),
-                        cts.Token,
-                        options);
+                            static tuple2 => tuple2.task.EmitTaskResult(tuple2.observer)),
+                        (scheduler: _scheduler, observer),
+                        options,
+                        cts.Token);
+                }
+
+                if (_ignoreExceptionsAfterUnsubscribe)
+                {
+                    _task.ContinueWith(t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted);
                 }
 
                 return cts;
             }
         }
+
         /// <summary>
         /// Returns an observable sequence that signals when the task completes.
         /// </summary>
@@ -106,7 +124,7 @@ namespace System.Reactive.Threading.Tasks
                 throw new ArgumentNullException(nameof(task));
             }
 
-            return ToObservableImpl(task, scheduler: null);
+            return ToObservableImpl(task, scheduler: null, ignoreExceptionsAfterUnsubscribe: false);
         }
 
         /// <summary>
@@ -119,37 +137,63 @@ namespace System.Reactive.Threading.Tasks
         /// <remarks>If the specified task object supports cancellation, consider using <see cref="Observable.FromAsync(Func{CancellationToken, Task})"/> instead.</remarks>
         public static IObservable<Unit> ToObservable(this Task task, IScheduler scheduler)
         {
-            if (task == null)
-            {
-                throw new ArgumentNullException(nameof(task));
-            }
-
             if (scheduler == null)
             {
                 throw new ArgumentNullException(nameof(scheduler));
             }
 
-            return ToObservableImpl(task, scheduler);
+            return ToObservable(task, new TaskObservationOptions(scheduler, ignoreExceptionsAfterUnsubscribe: false));
         }
 
-        private static IObservable<Unit> ToObservableImpl(Task task, IScheduler scheduler)
+        /// <summary>
+        /// Returns an observable sequence that signals when the task completes.
+        /// </summary>
+        /// <param name="task">Task to convert to an observable sequence.</param>
+        /// <param name="options">Controls how the tasks's progress is observed.</param>
+        /// <returns>An observable sequence that produces a unit value when the task completes, or propagates the exception produced by the task.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="task"/> is <c>null</c>.</exception>
+        /// <remarks>If the specified task object supports cancellation, consider using <see cref="Observable.FromAsync(Func{CancellationToken, Task})"/> instead.</remarks>
+        public static IObservable<Unit> ToObservable(this Task task, TaskObservationOptions options)
+        {
+            if (task == null)
+            {
+                throw new ArgumentNullException(nameof(task));
+            }
+
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
+            return ToObservableImpl(task, options.Scheduler, options.IgnoreExceptionsAfterUnsubscribe);
+        }
+
+        internal static IObservable<Unit> ToObservable(this Task task, TaskObservationOptions.Value options)
+        {
+            if (task == null)
+            {
+                throw new ArgumentNullException(nameof(task));
+            }
+
+            return ToObservableImpl(task, options.Scheduler, options.IgnoreExceptionsAfterUnsubscribe);
+        }
+
+
+        private static IObservable<Unit> ToObservableImpl(Task task, IScheduler? scheduler, bool ignoreExceptionsAfterUnsubscribe)
         {
             if (task.IsCompleted)
             {
-                scheduler = scheduler ?? ImmediateScheduler.Instance;
+                scheduler ??= ImmediateScheduler.Instance;
 
-                switch (task.Status)
+                return task.Status switch
                 {
-                    case TaskStatus.Faulted:
-                        return new Throw<Unit>(task.Exception.InnerException, scheduler);
-                    case TaskStatus.Canceled:
-                        return new Throw<Unit>(new TaskCanceledException(task), scheduler);
-                }
-
-                return new Return<Unit>(Unit.Default, scheduler);
+                    TaskStatus.Faulted => new Throw<Unit>(task.GetSingleException(), scheduler),
+                    TaskStatus.Canceled => new Throw<Unit>(new TaskCanceledException(task), scheduler),
+                    _ => new Return<Unit>(Unit.Default, scheduler)
+                };
             }
 
-            return new SlowTaskObservable(task, scheduler);
+            return new SlowTaskObservable(task, scheduler, ignoreExceptionsAfterUnsubscribe);
         }
 
         private static void EmitTaskResult(this Task task, IObserver<Unit> subject)
@@ -161,7 +205,7 @@ namespace System.Reactive.Threading.Tasks
                     subject.OnCompleted();
                     break;
                 case TaskStatus.Faulted:
-                    subject.OnError(task.Exception.InnerException);
+                    subject.OnError(task.GetSingleException());
                     break;
                 case TaskStatus.Canceled:
                     subject.OnError(new TaskCanceledException(task));
@@ -180,7 +224,7 @@ namespace System.Reactive.Threading.Tasks
             var cts = new CancellationDisposable();
 
             task.ContinueWith(
-                (t, observerObject) => t.EmitTaskResult((IObserver<Unit>)observerObject), 
+                static (t, observerObject) => t.EmitTaskResult((IObserver<Unit>)observerObject!), 
                 observer, 
                 cts.Token, 
                 TaskContinuationOptions.ExecuteSynchronously, 
@@ -204,7 +248,7 @@ namespace System.Reactive.Threading.Tasks
                 throw new ArgumentNullException(nameof(task));
             }
 
-            return ToObservableImpl(task, scheduler: null);
+            return ToObservableImpl(task, scheduler: null, ignoreExceptionsAfterUnsubscribe: false);
         }
 
         /// <summary>
@@ -218,37 +262,63 @@ namespace System.Reactive.Threading.Tasks
         /// <remarks>If the specified task object supports cancellation, consider using <see cref="Observable.FromAsync{TResult}(Func{CancellationToken, Task{TResult}})"/> instead.</remarks>
         public static IObservable<TResult> ToObservable<TResult>(this Task<TResult> task, IScheduler scheduler)
         {
-            if (task == null)
-            {
-                throw new ArgumentNullException(nameof(task));
-            }
-
             if (scheduler == null)
             {
                 throw new ArgumentNullException(nameof(scheduler));
             }
 
-            return ToObservableImpl(task, scheduler);
+            return ToObservable(task, new TaskObservationOptions(scheduler, ignoreExceptionsAfterUnsubscribe: false));
         }
 
-        private static IObservable<TResult> ToObservableImpl<TResult>(Task<TResult> task, IScheduler scheduler)
+        /// <summary>
+        /// Returns an observable sequence that propagates the result of the task.
+        /// </summary>
+        /// <typeparam name="TResult">The type of the result produced by the task.</typeparam>
+        /// <param name="task">Task to convert to an observable sequence.</param>
+        /// <param name="options">Controls how the tasks's progress is observed.</param>
+        /// <returns>An observable sequence that produces the task's result, or propagates the exception produced by the task.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="task"/> is <c>null</c>.</exception>
+        /// <remarks>If the specified task object supports cancellation, consider using <see cref="Observable.FromAsync{TResult}(Func{CancellationToken, Task{TResult}})"/> instead.</remarks>
+        public static IObservable<TResult> ToObservable<TResult>(this Task<TResult> task, TaskObservationOptions options)
+        {
+            if (task == null)
+            {
+                throw new ArgumentNullException(nameof(task));
+            }
+
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
+            return ToObservableImpl(task, options.Scheduler, options.IgnoreExceptionsAfterUnsubscribe);
+        }
+
+        internal static IObservable<TResult> ToObservable<TResult>(this Task<TResult> task, TaskObservationOptions.Value options)
+        {
+            if (task == null)
+            {
+                throw new ArgumentNullException(nameof(task));
+            }
+
+            return ToObservableImpl(task, options.Scheduler, options.IgnoreExceptionsAfterUnsubscribe);
+        }
+
+        private static IObservable<TResult> ToObservableImpl<TResult>(Task<TResult> task, IScheduler? scheduler, bool ignoreExceptionsAfterUnsubscribe)
         {
             if (task.IsCompleted)
             {
-                scheduler = scheduler ?? ImmediateScheduler.Instance;
+                scheduler ??= ImmediateScheduler.Instance;
 
-                switch (task.Status)
+                return task.Status switch
                 {
-                    case TaskStatus.Faulted:
-                        return new Throw<TResult>(task.Exception.InnerException, scheduler);
-                    case TaskStatus.Canceled:
-                        return new Throw<TResult>(new TaskCanceledException(task), scheduler);
-                }
-
-                return new Return<TResult>(task.Result, scheduler);
+                    TaskStatus.Faulted => new Throw<TResult>(task.GetSingleException(), scheduler),
+                    TaskStatus.Canceled => new Throw<TResult>(new TaskCanceledException(task), scheduler),
+                    _ => new Return<TResult>(task.Result, scheduler)
+                };
             }
 
-            return new SlowTaskObservable<TResult>(task, scheduler);
+            return new SlowTaskObservable<TResult>(task, scheduler, ignoreExceptionsAfterUnsubscribe);
         }
 
         private static void EmitTaskResult<TResult>(this Task<TResult> task, IObserver<TResult> subject)
@@ -260,7 +330,7 @@ namespace System.Reactive.Threading.Tasks
                     subject.OnCompleted();
                     break;
                 case TaskStatus.Faulted:
-                    subject.OnError(task.Exception.InnerException);
+                    subject.OnError(task.GetSingleException());
                     break;
                 case TaskStatus.Canceled:
                     subject.OnError(new TaskCanceledException(task));
@@ -268,7 +338,7 @@ namespace System.Reactive.Threading.Tasks
             }
         }
 
-        private static TaskContinuationOptions GetTaskContinuationOptions(IScheduler scheduler)
+        private static TaskContinuationOptions GetTaskContinuationOptions(IScheduler? scheduler)
         {
             var options = TaskContinuationOptions.None;
 
@@ -301,7 +371,7 @@ namespace System.Reactive.Threading.Tasks
             var cts = new CancellationDisposable();
 
             task.ContinueWith(
-                (t, observerObject) => t.EmitTaskResult((IObserver<TResult>)observerObject), 
+                static (t, observerObject) => t.EmitTaskResult((IObserver<TResult>)observerObject!), 
                 observer, 
                 cts.Token, 
                 TaskContinuationOptions.ExecuteSynchronously, 
@@ -327,6 +397,20 @@ namespace System.Reactive.Threading.Tasks
             return observable.ToTask(new CancellationToken(), state: null);
         }
 
+
+        /// <summary>
+        /// Returns a task that will receive the last value or the exception produced by the observable sequence.
+        /// </summary>
+        /// <typeparam name="TResult">The type of the elements in the source sequence.</typeparam>
+        /// <param name="observable">Observable sequence to convert to a task.</param>
+        /// <param name="scheduler">The scheduler used for overriding where the task completion signals will be issued.</param>
+        /// <returns>A task that will receive the last element or the exception produced by the observable sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="observable"/> or <paramref name="scheduler"/> is <c>null</c>.</exception>
+        public static Task<TResult> ToTask<TResult>(this IObservable<TResult> observable, IScheduler scheduler)
+        {
+            return observable.ToTask().ContinueOnScheduler(scheduler);
+        }
+
         /// <summary>
         /// Returns a task that will receive the last value or the exception produced by the observable sequence.
         /// </summary>
@@ -335,7 +419,7 @@ namespace System.Reactive.Threading.Tasks
         /// <param name="state">The state to use as the underlying task's AsyncState.</param>
         /// <returns>A task that will receive the last element or the exception produced by the observable sequence.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="observable"/> is <c>null</c>.</exception>
-        public static Task<TResult> ToTask<TResult>(this IObservable<TResult> observable, object state)
+        public static Task<TResult> ToTask<TResult>(this IObservable<TResult> observable, object? state)
         {
             if (observable == null)
             {
@@ -343,6 +427,20 @@ namespace System.Reactive.Threading.Tasks
             }
 
             return observable.ToTask(new CancellationToken(), state);
+        }
+
+        /// <summary>
+        /// Returns a task that will receive the last value or the exception produced by the observable sequence.
+        /// </summary>
+        /// <typeparam name="TResult">The type of the elements in the source sequence.</typeparam>
+        /// <param name="observable">Observable sequence to convert to a task.</param>
+        /// <param name="state">The state to use as the underlying task's AsyncState.</param>
+        /// <param name="scheduler">The scheduler used for overriding where the task completion signals will be issued.</param>
+        /// <returns>A task that will receive the last element or the exception produced by the observable sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="observable"/> or <paramref name="scheduler"/> is <c>null</c>.</exception>
+        public static Task<TResult> ToTask<TResult>(this IObservable<TResult> observable, object? state, IScheduler scheduler)
+        {
+            return observable.ToTask(new CancellationToken(), state).ContinueOnScheduler(scheduler);
         }
 
         /// <summary>
@@ -363,6 +461,55 @@ namespace System.Reactive.Threading.Tasks
             return observable.ToTask(cancellationToken, state: null);
         }
 
+        /// <summary>
+        /// Returns a task that will receive the last value or the exception produced by the observable sequence.
+        /// </summary>
+        /// <typeparam name="TResult">The type of the elements in the source sequence.</typeparam>
+        /// <param name="observable">Observable sequence to convert to a task.</param>
+        /// <param name="cancellationToken">Cancellation token that can be used to cancel the task, causing unsubscription from the observable sequence.</param>
+        /// <param name="scheduler">The scheduler used for overriding where the task completion signals will be issued.</param>
+        /// <returns>A task that will receive the last element or the exception produced by the observable sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="observable"/> or <paramref name="scheduler"/> is <c>null</c>.</exception>
+#pragma warning disable CA1068 // (CancellationToken parameters must come last.) Would be a breaking change.
+        public static Task<TResult> ToTask<TResult>(this IObservable<TResult> observable, CancellationToken cancellationToken, IScheduler scheduler)
+#pragma warning restore CA1068
+        {
+            return observable.ToTask(cancellationToken, state: null).ContinueOnScheduler(scheduler);
+        }
+
+        internal static Task<TResult> ContinueOnScheduler<TResult>(this Task<TResult> task, IScheduler scheduler)
+        {
+            if (scheduler == null)
+            {
+                throw new ArgumentNullException(nameof(scheduler));
+            }
+            var tcs = new TaskCompletionSource<TResult>(task.AsyncState);
+            task.ContinueWith(
+                static (t, o) =>
+                {
+                    var (scheduler, tcs) = ((IScheduler, TaskCompletionSource<TResult>))o!;
+
+                    scheduler.ScheduleAction((t, tcs), static state =>
+                    {
+                        if (state.t.IsCanceled)
+                        {
+                            state.tcs.TrySetCanceled(new TaskCanceledException(state.t).CancellationToken);
+                        }
+                        else if (state.t.IsFaulted)
+                        {
+                            state.tcs.TrySetException(state.t.GetSingleException());
+                        }
+                        else
+                        {
+                            state.tcs.TrySetResult(state.t.Result);
+                        }
+                    });
+                },
+                (scheduler, tcs),
+                TaskContinuationOptions.ExecuteSynchronously);
+            return tcs.Task;
+        }
+
         private sealed class ToTaskObserver<TResult> : SafeObserver<TResult>
         {
             private readonly CancellationToken _ct;
@@ -370,7 +517,7 @@ namespace System.Reactive.Threading.Tasks
             private readonly CancellationTokenRegistration _ctr;
 
             private bool _hasValue;
-            private TResult _lastValue;
+            private TResult? _lastValue;
 
             public ToTaskObserver(TaskCompletionSource<TResult> tcs, CancellationToken ct)
             {
@@ -379,7 +526,7 @@ namespace System.Reactive.Threading.Tasks
 
                 if (ct.CanBeCanceled)
                 {
-                    _ctr = ct.Register(@this => ((ToTaskObserver<TResult>)@this).Cancel(), this);
+                    _ctr = ct.Register(static @this => ((ToTaskObserver<TResult>)@this!).Cancel(), this);
                 }
             }
 
@@ -401,11 +548,18 @@ namespace System.Reactive.Threading.Tasks
             {
                 if (_hasValue)
                 {
-                    _tcs.TrySetResult(_lastValue);
+                    _tcs.TrySetResult(_lastValue!);
                 }
                 else
                 {
-                    _tcs.TrySetException(new InvalidOperationException(Strings_Linq.NO_ELEMENTS));
+                    try
+                    {
+                        throw new InvalidOperationException(Strings_Linq.NO_ELEMENTS);
+                    }
+                    catch (Exception e)
+                    {
+                        _tcs.TrySetException(e);
+                    }
                 }
 
                 _ctr.Dispose(); // no null-check needed (struct)
@@ -415,11 +569,7 @@ namespace System.Reactive.Threading.Tasks
             private void Cancel()
             {
                 Dispose();
-#if HAS_TPL46
                 _tcs.TrySetCanceled(_ct);
-#else
-                _tcs.TrySetCanceled();
-#endif
             }
         }
 
@@ -432,7 +582,9 @@ namespace System.Reactive.Threading.Tasks
         /// <param name="state">The state to use as the underlying task's <see cref="Task.AsyncState"/>.</param>
         /// <returns>A task that will receive the last element or the exception produced by the observable sequence.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="observable"/> is <c>null</c>.</exception>
-        public static Task<TResult> ToTask<TResult>(this IObservable<TResult> observable, CancellationToken cancellationToken, object state)
+#pragma warning disable CA1068 // (CancellationToken parameters must come last.) Would be a breaking change.
+        public static Task<TResult> ToTask<TResult>(this IObservable<TResult> observable, CancellationToken cancellationToken, object? state)
+#pragma warning restore CA1068
         {
             if (observable == null)
             {
@@ -465,6 +617,23 @@ namespace System.Reactive.Threading.Tasks
             }
 
             return tcs.Task;
+        }
+
+        /// <summary>
+        /// Returns a task that will receive the last value or the exception produced by the observable sequence.
+        /// </summary>
+        /// <typeparam name="TResult">The type of the elements in the source sequence.</typeparam>
+        /// <param name="observable">Observable sequence to convert to a task.</param>
+        /// <param name="cancellationToken">Cancellation token that can be used to cancel the task, causing unsubscription from the observable sequence.</param>
+        /// <param name="state">The state to use as the underlying task's <see cref="Task.AsyncState"/>.</param>
+        /// <param name="scheduler">The scheduler used for overriding where the task completion signals will be issued.</param>
+        /// <returns>A task that will receive the last element or the exception produced by the observable sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="observable"/> or <paramref name="scheduler"/> is <c>null</c>.</exception>
+#pragma warning disable CA1068 // (CancellationToken parameters must come last.) Would be a breaking change.
+        public static Task<TResult> ToTask<TResult>(this IObservable<TResult> observable, CancellationToken cancellationToken, object? state, IScheduler scheduler)
+#pragma warning restore CA1068
+        {
+            return observable.ToTask(cancellationToken, state).ContinueOnScheduler(scheduler);
         }
     }
 }

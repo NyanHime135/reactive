@@ -1,6 +1,6 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
-// See the LICENSE file in the project root for more information. 
+// The .NET Foundation licenses this file to you under the MIT License.
+// See the LICENSE file in the project root for more information.
 
 using System.Reactive.Disposables;
 using System.Threading;
@@ -31,10 +31,7 @@ namespace System.Reactive.Concurrency
         /// <summary>
         /// Gets the control associated with the ControlScheduler.
         /// </summary>
-        public Control Control
-        {
-            get { return _control; }
-        }
+        public Control Control => _control;
 
         /// <summary>
         /// Schedules an action to be executed on the message loop associated with the control.
@@ -95,7 +92,7 @@ namespace System.Reactive.Concurrency
             {
                 var d = new MultipleAssignmentDisposable();
 
-                var timer = new Windows.Forms.Timer();
+                var timer = new System.Windows.Forms.Timer();
 
                 timer.Tick += (s, e) =>
                 {
@@ -112,7 +109,7 @@ namespace System.Reactive.Concurrency
                         finally
                         {
                             t.Stop();
-                            action = null;
+                            action = static (s, t) => Disposable.Empty;
                         }
                     }
                 };
@@ -126,7 +123,7 @@ namespace System.Reactive.Concurrency
                     if (t != null)
                     {
                         t.Stop();
-                        action = (_, __) => Disposable.Empty;
+                        action = static (s, t) => Disposable.Empty;
                     }
                 });
 
@@ -174,7 +171,7 @@ namespace System.Reactive.Concurrency
 
             var createTimer = new Func<IScheduler, TState, IDisposable>((scheduler1, state1) =>
             {
-                var timer = new Windows.Forms.Timer();
+                var timer = new System.Windows.Forms.Timer();
 
                 timer.Tick += (s, e) =>
                 {
@@ -193,7 +190,7 @@ namespace System.Reactive.Concurrency
                     if (t != null)
                     {
                         t.Stop();
-                        action = _ => _;
+                        action = static _ => _;
                     }
                 });
             });

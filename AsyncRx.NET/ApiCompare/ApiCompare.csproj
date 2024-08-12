@@ -2,12 +2,12 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.0</TargetFramework>
-  </PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
 
-  <ItemGroup>
-    <PackageReference Include="System.Reactive" Version="4.0.0-preview00001" />
-  </ItemGroup>
+    <!-- You wouldn't think we'd need this with an Exe, but it seems this is getting published as a package without this! -->
+    <IsPackable>false</IsPackable>
+    <TargetFramework>net6.0</TargetFramework>
+  </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\System.Reactive.Async\System.Reactive.Async.csproj" />

@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -25,7 +25,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _scheduler = scheduler;
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
@@ -34,10 +34,11 @@ namespace System.Reactive.Linq.ObservableImpl
                 private readonly TimeSpan _dueTime;
                 private readonly IObservable<TSource> _other;
                 private readonly IScheduler _scheduler;
+
                 private long _index;
-                private IDisposable _mainDisposable;
-                private IDisposable _otherDisposable;
-                private IDisposable _timerDisposable;
+                private SingleAssignmentDisposableValue _mainDisposable;
+                private SingleAssignmentDisposableValue _otherDisposable;
+                private IDisposable? _timerDisposable;
 
                 public _(Relative parent, IObserver<TSource> observer)
                     : base(observer)
@@ -51,17 +52,18 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     CreateTimer(0L);
 
-                    Disposable.SetSingle(ref _mainDisposable, source.SubscribeSafe(this));
+                    _mainDisposable.Disposable = source.SubscribeSafe(this);
                 }
 
                 protected override void Dispose(bool disposing)
                 {
                     if (disposing)
                     {
-                        Disposable.TryDispose(ref _mainDisposable);
-                        Disposable.TryDispose(ref _otherDisposable);
-                        Disposable.TryDispose(ref _timerDisposable);
+                        _mainDisposable.Dispose();
+                        _otherDisposable.Dispose();
+                        Disposable.Dispose(ref _timerDisposable);
                     }
+
                     base.Dispose(disposing);
                 }
 
@@ -69,8 +71,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (Disposable.TrySetMultiple(ref _timerDisposable, null))
                     {
-
-                        var d = _scheduler.ScheduleAction((idx, instance: this), _dueTime, state => { state.instance.Timeout(state.idx); });
+                        var d = _scheduler.ScheduleAction((idx, instance: this), _dueTime, static state => { state.instance.Timeout(state.idx); });
 
                         Disposable.TrySetMultiple(ref _timerDisposable, d);
                     }
@@ -80,11 +81,11 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (Volatile.Read(ref _index) == idx && Interlocked.CompareExchange(ref _index, long.MaxValue, idx) == idx)
                     {
-                        Disposable.TryDispose(ref _mainDisposable);
+                        _mainDisposable.Dispose();
 
                         var d = _other.Subscribe(GetForwarder());
 
-                        Disposable.SetSingle(ref _otherDisposable, d);
+                        _otherDisposable.Disposable = d;
                     }
                 }
 
@@ -108,7 +109,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (Interlocked.Exchange(ref _index, long.MaxValue) != long.MaxValue)
                     {
-                        Disposable.TryDispose(ref _timerDisposable);
+                        Disposable.Dispose(ref _timerDisposable);
 
                         ForwardOnError(error);
                     }
@@ -118,7 +119,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (Interlocked.Exchange(ref _index, long.MaxValue) != long.MaxValue)
                     {
-                        Disposable.TryDispose(ref _timerDisposable);
+                        Disposable.Dispose(ref _timerDisposable);
 
                         ForwardOnCompleted();
                     }
@@ -141,14 +142,15 @@ namespace System.Reactive.Linq.ObservableImpl
                 _scheduler = scheduler;
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(_other, observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(_other, observer);
 
             protected override void Run(_ sink) => sink.Run(this);
 
             internal sealed class _ : IdentitySink<TSource>
             {
                 private readonly IObservable<TSource> _other;
-                private IDisposable _serialDisposable;
+
+                private SerialDisposableValue _serialDisposable;
                 private int _wip;
 
                 public _(IObservable<TSource> other, IObserver<TSource> observer)
@@ -159,17 +161,18 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public void Run(Absolute parent)
                 {
-                    SetUpstream(parent._scheduler.ScheduleAction(this, parent._dueTime, @this => @this.Timeout()));
+                    SetUpstream(parent._scheduler.ScheduleAction(this, parent._dueTime, static @this => @this.Timeout()));
 
-                    Disposable.TrySetSingle(ref _serialDisposable, parent._source.SubscribeSafe(this));
+                    _serialDisposable.Disposable = parent._source.SubscribeSafe(this);
                 }
 
                 protected override void Dispose(bool disposing)
                 {
                     if (disposing)
                     {
-                        Disposable.TryDispose(ref _serialDisposable);
+                        _serialDisposable.Dispose();
                     }
+
                     base.Dispose(disposing);
                 }
 
@@ -177,7 +180,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (Interlocked.Increment(ref _wip) == 1)
                     {
-                        Disposable.TrySetSerial(ref _serialDisposable, _other.SubscribeSafe(GetForwarder()));
+                        _serialDisposable.Disposable = _other.SubscribeSafe(GetForwarder());
                     }
                 }
 
@@ -188,7 +191,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         ForwardOnNext(value);
                         if (Interlocked.Decrement(ref _wip) != 0)
                         {
-                            Disposable.TrySetSerial(ref _serialDisposable, _other.SubscribeSafe(GetForwarder()));
+                            _serialDisposable.Disposable = _other.SubscribeSafe(GetForwarder());
                         }
                     }
                 }
@@ -227,7 +230,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _other = other;
         }
 
-        protected override _ CreateSink(IObserver<TSource> observer) => new _(this, observer);
+        protected override _ CreateSink(IObserver<TSource> observer) => new(this, observer);
 
         protected override void Run(_ sink) => sink.Run(this);
 
@@ -235,8 +238,9 @@ namespace System.Reactive.Linq.ObservableImpl
         {
             private readonly Func<TSource, IObservable<TTimeout>> _timeoutSelector;
             private readonly IObservable<TSource> _other;
-            private IDisposable _sourceDisposable;
-            private IDisposable _timerDisposable;
+
+            private SerialDisposableValue _sourceDisposable;
+            private IDisposable? _timerDisposable;
             private long _index;
 
             public _(Timeout<TSource, TTimeout> parent, IObserver<TSource> observer)
@@ -246,21 +250,21 @@ namespace System.Reactive.Linq.ObservableImpl
                 _other = parent._other;
             }
 
-
             public void Run(Timeout<TSource, TTimeout> parent)
             {
                 SetTimer(parent._firstTimeout, 0L);
 
-                Disposable.TrySetSingle(ref _sourceDisposable, parent._source.SubscribeSafe(this));
+                _sourceDisposable.TrySetFirst(parent._source.SubscribeSafe(this));
             }
 
             protected override void Dispose(bool disposing)
             {
                 if (disposing)
                 {
-                    Disposable.TryDispose(ref _sourceDisposable);
-                    Disposable.TryDispose(ref _timerDisposable);
+                    _sourceDisposable.Dispose();
+                    Disposable.Dispose(ref _timerDisposable);
                 }
+
                 base.Dispose(disposing);
             }
 
@@ -277,7 +281,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                         ForwardOnNext(value);
 
-                        var timeoutSource = default(IObservable<TTimeout>);
+                        IObservable<TTimeout> timeoutSource;
                         try
                         {
                             timeoutSource = _timeoutSelector(value);
@@ -314,7 +318,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 if (Volatile.Read(ref _index) == idx
                     && Interlocked.CompareExchange(ref _index, long.MaxValue, idx) == idx)
                 {
-                    Disposable.TrySetSerial(ref _sourceDisposable, _other.SubscribeSafe(GetForwarder()));
+                    _sourceDisposable.Disposable = _other.SubscribeSafe(GetForwarder());
                 }
             }
 
@@ -326,12 +330,14 @@ namespace System.Reactive.Linq.ObservableImpl
                     ForwardOnError(error);
                     return true;
                 }
+
                 return false;
             }
 
             private void SetTimer(IObservable<TTimeout> timeout, long idx)
             {
                 var timeoutObserver = new TimeoutObserver(this, idx);
+
                 if (Disposable.TrySetSerial(ref _timerDisposable, timeoutObserver))
                 {
                     var d = timeout.Subscribe(timeoutObserver);

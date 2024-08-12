@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 namespace System.Reactive.Linq.ObservableImpl
@@ -15,7 +15,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
         public IObservable<TSource> Dematerialize() => _source.AsObservable();
 
-        protected override _ CreateSink(IObserver<Notification<TSource>> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<Notification<TSource>> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 

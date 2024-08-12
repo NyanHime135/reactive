@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Runtime.CompilerServices;
@@ -9,12 +9,16 @@ namespace System.Reactive.Concurrency
     internal abstract class SchedulerWrapper : IScheduler, IServiceProvider
     {
         protected readonly IScheduler _scheduler;
-        private readonly ConditionalWeakTable<IScheduler, IScheduler> _cache;
+        private readonly ConditionalWeakTable<IScheduler, IScheduler> _cache =
+#if NET472_OR_GREATER || NETSTANDARD2_0_OR_GREATER
+            new();
+#else
+            [];
+#endif
 
         protected SchedulerWrapper(IScheduler scheduler)
         {
             _scheduler = scheduler;
-            _cache = new ConditionalWeakTable<IScheduler, IScheduler>();
         }
 
         protected SchedulerWrapper(IScheduler scheduler, ConditionalWeakTable<IScheduler, IScheduler> cache)
@@ -67,9 +71,9 @@ namespace System.Reactive.Concurrency
 
         protected abstract SchedulerWrapper Clone(IScheduler scheduler, ConditionalWeakTable<IScheduler, IScheduler> cache);
 
-        public object GetService(Type serviceType)
+        public object? GetService(Type serviceType)
         {
-            if (!(_scheduler is IServiceProvider serviceProvider))
+            if (_scheduler is not IServiceProvider serviceProvider)
             {
                 return null;
             }
@@ -82,6 +86,6 @@ namespace System.Reactive.Concurrency
             return serviceProvider.GetService(serviceType);
         }
 
-        protected abstract bool TryGetService(IServiceProvider provider, Type serviceType, out object service);
+        protected abstract bool TryGetService(IServiceProvider provider, Type serviceType, out object? service);
     }
 }

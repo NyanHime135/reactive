@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Diagnostics;
@@ -76,7 +76,7 @@ namespace System.Reactive.Concurrency
                 throw new ArgumentNullException(nameof(action));
             }
 
-            return SchedulePeriodic_(scheduler, (state, action), period, t => { t.action(t.state); return t; });
+            return SchedulePeriodic_(scheduler, (state, action), period, static t => { t.action(t.state); return t; });
         }
 
         /// <summary>
@@ -108,7 +108,7 @@ namespace System.Reactive.Concurrency
                 throw new ArgumentNullException(nameof(action));
             }
 
-            return SchedulePeriodic_(scheduler, action, period, a => { a(); return a; });
+            return SchedulePeriodic_(scheduler, action, period, static a => { a(); return a; });
         }
 
         /// <summary>
@@ -335,10 +335,10 @@ namespace System.Reactive.Concurrency
 
             private TState _state;
 
-            private readonly object _gate = new object();
-            private readonly AutoResetEvent _resumeEvent = new AutoResetEvent(false);
+            private readonly object _gate = new();
+            private readonly AutoResetEvent _resumeEvent = new(false);
             private volatile int _runState;
-            private IStopwatch _stopwatch;
+            private IStopwatch? _stopwatch;
             private TimeSpan _nextDue;
             private TimeSpan _suspendedAt;
             private TimeSpan _inactiveTime;
@@ -367,7 +367,7 @@ namespace System.Reactive.Concurrency
             private const int Suspended = 2;
             private const int Disposed = 3;
 
-            private IDisposable _task;
+            private SingleAssignmentDisposableValue _task;
 
             public IDisposable Start()
             {
@@ -377,13 +377,13 @@ namespace System.Reactive.Concurrency
                 _nextDue = _period;
                 _runState = Running;
 
-                Disposable.TrySetSingle(ref _task, _scheduler.Schedule(this, _nextDue, (@this, a) => @this.Tick(a)));
+                _task.Disposable = _scheduler.Schedule(this, _nextDue, static (@this, a) => @this.Tick(a));
                 return this;
             }
 
             void IDisposable.Dispose()
             {
-                Disposable.TryDispose(ref _task);
+                _task.Dispose();
                 Cancel();
             }
 
@@ -406,7 +406,7 @@ namespace System.Reactive.Concurrency
                             // recorded as inactive based on cumulative deltas computed in
                             // the suspend and resume event handlers.
                             //
-                            next = Normalize(_nextDue - (_stopwatch.Elapsed - _inactiveTime));
+                            next = Normalize(_nextDue - (_stopwatch!.Elapsed - _inactiveTime));
                             break;
                         }
 
@@ -458,7 +458,7 @@ namespace System.Reactive.Concurrency
                 }
             }
 
-            private void Suspending(object sender, HostSuspendingEventArgs args)
+            private void Suspending(object? sender, HostSuspendingEventArgs args)
             {
                 //
                 // The host is telling us we're about to be suspended. At this point, time
@@ -478,7 +478,7 @@ namespace System.Reactive.Concurrency
                 {
                     if (_runState == Running)
                     {
-                        _suspendedAt = _stopwatch.Elapsed;
+                        _suspendedAt = _stopwatch!.Elapsed; // NB: Non-null when >= Running.
                         _runState = Suspended;
 
                         if (!Environment.HasShutdownStarted)
@@ -489,7 +489,7 @@ namespace System.Reactive.Concurrency
                 }
             }
 
-            private void Resuming(object sender, HostResumingEventArgs args)
+            private void Resuming(object? sender, HostResumingEventArgs args)
             {
                 //
                 // The host is telling us we're being resumed. At this point, code will
@@ -512,7 +512,7 @@ namespace System.Reactive.Concurrency
                 {
                     if (_runState == Suspended)
                     {
-                        _inactiveTime += _stopwatch.Elapsed - _suspendedAt;
+                        _inactiveTime += _stopwatch!.Elapsed - _suspendedAt; // NB: Non-null when >= Running.
                         _runState = Running;
 
                         if (!Environment.HasShutdownStarted)
@@ -555,7 +555,7 @@ namespace System.Reactive.Concurrency
 
             private TState _state;
             private int _pendingTickCount;
-            private IDisposable _cancel;
+            private IDisposable? _cancel;
 
             public IDisposable Start()
             {
@@ -608,7 +608,7 @@ namespace System.Reactive.Concurrency
                         }
                         catch (Exception e)
                         {
-                            _cancel.Dispose();
+                            _cancel!.Dispose(); // NB: Non-null after Start is called.
                             e.Throw();
                         }
 

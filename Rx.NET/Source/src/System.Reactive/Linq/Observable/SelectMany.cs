@@ -1,8 +1,9 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
+using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,14 +25,14 @@ namespace System.Reactive.Linq.ObservableImpl
                 _resultSelector = resultSelector;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
             internal sealed class _ : Sink<TSource, TResult>
             {
-                private readonly object _gate = new object();
-                private readonly CompositeDisposable _group = new CompositeDisposable();
+                private readonly object _gate = new();
+                private readonly CompositeDisposable _group = [];
 
                 private readonly Func<TSource, IObservable<TCollection>> _collectionSelector;
                 private readonly Func<TSource, TCollection, TResult> _resultSelector;
@@ -47,7 +48,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var collection = default(IObservable<TCollection>);
+                    IObservable<TCollection> collection;
 
                     try
                     {
@@ -121,7 +122,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     public override void OnNext(TCollection value)
                     {
-                        var res = default(TResult);
+                        TResult res;
 
                         try
                         {
@@ -185,14 +186,14 @@ namespace System.Reactive.Linq.ObservableImpl
                 _resultSelector = resultSelector;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
             internal sealed class _ : Sink<TSource, TResult>
             {
-                private readonly object _gate = new object();
-                private readonly CompositeDisposable _group = new CompositeDisposable();
+                private readonly object _gate = new();
+                private readonly CompositeDisposable _group = [];
 
                 private readonly Func<TSource, int, IObservable<TCollection>> _collectionSelector;
                 private readonly Func<TSource, int, TCollection, int, TResult> _resultSelector;
@@ -209,11 +210,12 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var index = checked(_index++);
-                    var collection = default(IObservable<TCollection>);
+                    int index;
+                    IObservable<TCollection> collection;
 
                     try
                     {
+                        index = checked(_index++);
                         collection = _collectionSelector(value, index);
                     }
                     catch (Exception ex)
@@ -288,7 +290,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     public override void OnNext(TCollection value)
                     {
-                        var res = default(TResult);
+                        TResult res;
 
                         try
                         {
@@ -352,7 +354,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _resultSelector = resultSelector;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
@@ -370,7 +372,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var xs = default(IEnumerable<TCollection>);
+                    IEnumerable<TCollection> xs;
                     try
                     {
                         xs = _collectionSelector(value);
@@ -381,7 +383,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         return;
                     }
 
-                    var e = default(IEnumerator<TCollection>);
+                    IEnumerator<TCollection> e;
                     try
                     {
                         e = xs.GetEnumerator();
@@ -416,7 +418,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                             if (hasNext)
                             {
-                                ForwardOnNext(current);
+                                ForwardOnNext(current!);
                             }
                         }
                     }
@@ -437,7 +439,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _resultSelector = resultSelector;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
@@ -457,11 +459,12 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var index = checked(_index++);
+                    int index;
 
-                    var xs = default(IEnumerable<TCollection>);
+                    IEnumerable<TCollection> xs;
                     try
                     {
+                        index = checked(_index++);
                         xs = _collectionSelector(value, index);
                     }
                     catch (Exception exception)
@@ -470,7 +473,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         return;
                     }
 
-                    var e = default(IEnumerator<TCollection>);
+                    IEnumerator<TCollection> e;
                     try
                     {
                         e = xs.GetEnumerator();
@@ -506,7 +509,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                             if (hasNext)
                             {
-                                ForwardOnNext(current);
+                                ForwardOnNext(current!);
                             }
                         }
                     }
@@ -527,14 +530,14 @@ namespace System.Reactive.Linq.ObservableImpl
                 _resultSelector = resultSelector;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
             internal sealed class _ : Sink<TSource, TResult>
             {
-                private readonly object _gate = new object();
-                private readonly CancellationTokenSource _cancel = new CancellationTokenSource();
+                private readonly object _gate = new();
+                private readonly CancellationTokenSource _cancel = new();
 
                 private readonly Func<TSource, CancellationToken, Task<TCollection>> _collectionSelector;
                 private readonly Func<TSource, TCollection, TResult> _resultSelector;
@@ -566,7 +569,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var task = default(Task<TCollection>);
+                    Task<TCollection> task;
                     try
                     {
                         Interlocked.Increment(ref _count);
@@ -588,7 +591,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     }
                     else
                     {
-                        task.ContinueWithState((t, tuple) => tuple.@this.OnCompletedTask(tuple.value, t), (@this: this, value), _cancel.Token);
+                        task.ContinueWithState(static (t, tuple) => tuple.@this.OnCompletedTask(tuple.value, t), (@this: this, value), _cancel.Token);
                     }
                 }
 
@@ -598,7 +601,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     {
                         case TaskStatus.RanToCompletion:
                         {
-                            var res = default(TResult);
+                            TResult res;
                             try
                             {
                                 res = _resultSelector(value, task.Result);
@@ -627,7 +630,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         {
                             lock (_gate)
                             {
-                                ForwardOnError(task.Exception.InnerException);
+                                ForwardOnError(TaskHelpers.GetSingleException(task));
                             }
 
                             break;
@@ -681,14 +684,14 @@ namespace System.Reactive.Linq.ObservableImpl
                 _resultSelector = resultSelector;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
             internal sealed class _ : Sink<TSource, TResult>
             {
-                private readonly object _gate = new object();
-                private readonly CancellationTokenSource _cancel = new CancellationTokenSource();
+                private readonly object _gate = new();
+                private readonly CancellationTokenSource _cancel = new();
 
                 private readonly Func<TSource, int, CancellationToken, Task<TCollection>> _collectionSelector;
                 private readonly Func<TSource, int, TCollection, TResult> _resultSelector;
@@ -721,11 +724,12 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var index = checked(_index++);
+                    int index;
 
-                    var task = default(Task<TCollection>);
+                    Task<TCollection> task;
                     try
                     {
+                        index = checked(_index++);
                         Interlocked.Increment(ref _count);
                         task = _collectionSelector(value, index, _cancel.Token);
                     }
@@ -745,7 +749,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     }
                     else
                     {
-                        task.ContinueWithState((t, tuple) => tuple.@this.OnCompletedTask(tuple.value, tuple.index, t), (@this: this, value, index), _cancel.Token);
+                        task.ContinueWithState(static (t, tuple) => tuple.@this.OnCompletedTask(tuple.value, tuple.index, t), (@this: this, value, index), _cancel.Token);
                     }
                 }
 
@@ -755,7 +759,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     {
                         case TaskStatus.RanToCompletion:
                         {
-                            var res = default(TResult);
+                            TResult res;
                             try
                             {
                                 res = _resultSelector(value, index, task.Result);
@@ -783,7 +787,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         {
                             lock (_gate)
                             {
-                                ForwardOnError(task.Exception.InnerException);
+                                ForwardOnError(TaskHelpers.GetSingleException(task));
                             }
 
                             break;
@@ -838,15 +842,15 @@ namespace System.Reactive.Linq.ObservableImpl
                 _selector = selector;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
             internal class _ : Sink<TSource, TResult>
             {
-                protected readonly object _gate = new object();
+                protected readonly object _gate = new();
                 private readonly Func<TSource, IObservable<TResult>> _selector;
-                private readonly CompositeDisposable _group = new CompositeDisposable();
+                private readonly CompositeDisposable _group = [];
 
                 private volatile bool _isStopped;
 
@@ -858,7 +862,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var inner = default(IObservable<TResult>);
+                    IObservable<TResult> inner;
 
                     try
                     {
@@ -1007,7 +1011,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (_selectorOnError != null)
                     {
-                        var inner = default(IObservable<TResult>);
+                        IObservable<TResult> inner;
 
                         try
                         {
@@ -1036,7 +1040,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (_selectorOnCompleted != null)
                     {
-                        var inner = default(IObservable<TResult>);
+                        IObservable<TResult> inner;
 
                         try
                         {
@@ -1070,14 +1074,14 @@ namespace System.Reactive.Linq.ObservableImpl
                 _selector = selector;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
             internal class _ : Sink<TSource, TResult>
             {
-                private readonly object _gate = new object();
-                private readonly CompositeDisposable _group = new CompositeDisposable();
+                private readonly object _gate = new();
+                private readonly CompositeDisposable _group = [];
 
                 protected readonly Func<TSource, int, IObservable<TResult>> _selector;
 
@@ -1092,7 +1096,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var inner = default(IObservable<TResult>);
+                    IObservable<TResult> inner;
 
                     try
                     {
@@ -1227,7 +1231,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
             internal new sealed class _ : ObservableSelectorIndexed._
             {
-                private readonly object _gate = new object();
+                private readonly object _gate = new();
 
                 private readonly Func<Exception, IObservable<TResult>> _selectorOnError;
                 private readonly Func<IObservable<TResult>> _selectorOnCompleted;
@@ -1243,7 +1247,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (_selectorOnError != null)
                     {
-                        var inner = default(IObservable<TResult>);
+                        IObservable<TResult> inner;
 
                         try
                         {
@@ -1272,7 +1276,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (_selectorOnCompleted != null)
                     {
-                        var inner = default(IObservable<TResult>);
+                        IObservable<TResult> inner;
 
                         try
                         {
@@ -1306,7 +1310,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _selector = selector;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
@@ -1322,7 +1326,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var xs = default(IEnumerable<TResult>);
+                    IEnumerable<TResult> xs;
                     try
                     {
                         xs = _selector(value);
@@ -1333,7 +1337,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         return;
                     }
 
-                    var e = default(IEnumerator<TResult>);
+                    IEnumerator<TResult> e;
                     try
                     {
                         e = xs.GetEnumerator();
@@ -1368,7 +1372,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                             if (hasNext)
                             {
-                                ForwardOnNext(current);
+                                ForwardOnNext(current!);
                             }
                         }
                     }
@@ -1387,7 +1391,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _selector = selector;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
@@ -1405,7 +1409,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var xs = default(IEnumerable<TResult>);
+                    IEnumerable<TResult> xs;
                     try
                     {
                         xs = _selector(value, checked(_index++));
@@ -1416,7 +1420,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         return;
                     }
 
-                    var e = default(IEnumerator<TResult>);
+                    IEnumerator<TResult> e;
                     try
                     {
                         e = xs.GetEnumerator();
@@ -1451,7 +1455,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                             if (hasNext)
                             {
-                                ForwardOnNext(current);
+                                ForwardOnNext(current!);
                             }
                         }
                     }
@@ -1470,14 +1474,14 @@ namespace System.Reactive.Linq.ObservableImpl
                 _selector = selector;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
             internal sealed class _ : Sink<TSource, TResult>
             {
-                private readonly object _gate = new object();
-                private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+                private readonly object _gate = new();
+                private readonly CancellationTokenSource _cts = new();
 
                 private readonly Func<TSource, CancellationToken, Task<TResult>> _selector;
 
@@ -1507,7 +1511,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var task = default(Task<TResult>);
+                    Task<TResult> task;
                     try
                     {
                         Interlocked.Increment(ref _count);
@@ -1529,7 +1533,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     }
                     else
                     {
-                        task.ContinueWith((closureTask, thisObject) => ((_)thisObject).OnCompletedTask(closureTask), this, _cts.Token);
+                        task.ContinueWith((closureTask, thisObject) => ((_)thisObject!).OnCompletedTask(closureTask), this, _cts.Token);
                     }
                 }
 
@@ -1552,7 +1556,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         {
                             lock (_gate)
                             {
-                                ForwardOnError(task.Exception.InnerException);
+                                ForwardOnError(TaskHelpers.GetSingleException(task));
                             }
 
                             break;
@@ -1604,14 +1608,14 @@ namespace System.Reactive.Linq.ObservableImpl
                 _selector = selector;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
             internal sealed class _ : Sink<TSource, TResult>
             {
-                private readonly object _gate = new object();
-                private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+                private readonly object _gate = new();
+                private readonly CancellationTokenSource _cts = new();
 
                 private readonly Func<TSource, int, CancellationToken, Task<TResult>> _selector;
 
@@ -1642,7 +1646,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var task = default(Task<TResult>);
+                    Task<TResult> task;
                     try
                     {
                         Interlocked.Increment(ref _count);
@@ -1664,7 +1668,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     }
                     else
                     {
-                        task.ContinueWith((closureTask, thisObject) => ((_)thisObject).OnCompletedTask(closureTask), this, _cts.Token);
+                        task.ContinueWith((closureTask, thisObject) => ((_)thisObject!).OnCompletedTask(closureTask), this, _cts.Token);
                     }
                 }
 
@@ -1687,7 +1691,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         {
                             lock (_gate)
                             {
-                                ForwardOnError(task.Exception.InnerException);
+                                ForwardOnError(TaskHelpers.GetSingleException(task));
                             }
 
                             break;

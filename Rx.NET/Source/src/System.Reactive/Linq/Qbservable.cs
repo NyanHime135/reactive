@@ -1,8 +1,6 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
-
-#pragma warning disable 1591
 
 using System.Collections.Generic;
 using System.Linq;
@@ -53,11 +51,9 @@ namespace System.Reactive.Linq
             return ((IQbservableProvider)source.Provider).CreateQuery<TSource>(
                 Expression.Call(
                     null,
-#if CRIPPLED_REFLECTION
-                    InfoOf(() => ToQbservable<TSource>(default)),
-#else
-                    ((MethodInfo)MethodBase.GetCurrentMethod()).MakeGenericMethod(typeof(TSource)),
-#endif
+#pragma warning disable IL2060 // ('System.Reflection.MethodInfo.MakeGenericMethod' can not be statically analyzed.) This gets the MethodInfo for the method running right now, so it can't have been trimmed
+                    ((MethodInfo)MethodBase.GetCurrentMethod()!).MakeGenericMethod(typeof(TSource)),
+#pragma warning restore IL2060
                     source.Expression
                 )
             );
@@ -87,11 +83,9 @@ namespace System.Reactive.Linq
             return ((IQbservableProvider)source.Provider).CreateQuery<TSource>(
                 Expression.Call(
                     null,
-#if CRIPPLED_REFLECTION
-                    InfoOf(() => ToQbservable<TSource>(default)),
-#else
-                    ((MethodInfo)MethodBase.GetCurrentMethod()).MakeGenericMethod(typeof(TSource)),
-#endif
+#pragma warning disable IL2060 // ('System.Reflection.MethodInfo.MakeGenericMethod' can not be statically analyzed.) This gets the MethodInfo for the method running right now, so it can't have been trimmed
+                    ((MethodInfo)MethodBase.GetCurrentMethod()!).MakeGenericMethod(typeof(TSource)),
+#pragma warning restore IL2060
                     source.Expression,
                     Expression.Constant(scheduler)
                 )
@@ -140,5 +134,3 @@ namespace System.Reactive.Linq
         }
     }
 }
-
-#pragma warning restore 1591

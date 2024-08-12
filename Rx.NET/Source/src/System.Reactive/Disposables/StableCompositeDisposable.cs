@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -10,6 +10,7 @@ namespace System.Reactive.Disposables
     /// <summary>
     /// Represents a group of disposable resources that are disposed together.
     /// </summary>
+#pragma warning disable CA1063 // (Overridable IDisposable.) This analyzer wants us to make breaking changes to its public API, which we can't do.
     public abstract class StableCompositeDisposable : ICancelable
     {
         /// <summary>
@@ -90,27 +91,27 @@ namespace System.Reactive.Disposables
 
         private sealed class Binary : StableCompositeDisposable
         {
-            private IDisposable _disposable1;
-            private IDisposable _disposable2;
+            private SingleAssignmentDisposableValue _disposable1;
+            private SingleAssignmentDisposableValue _disposable2;
 
             public Binary(IDisposable disposable1, IDisposable disposable2)
             {
-                Volatile.Write(ref _disposable1, disposable1);
-                Volatile.Write(ref _disposable2, disposable2);
+                _disposable1.Disposable = disposable1;
+                _disposable2.Disposable = disposable2;
             }
 
-            public override bool IsDisposed => Disposable.GetIsDisposed(ref _disposable1);
+            public override bool IsDisposed => _disposable1.IsDisposed;
 
             public override void Dispose()
             {
-                Disposable.TryDispose(ref _disposable1);
-                Disposable.TryDispose(ref _disposable2);
+                _disposable1.Dispose();
+                _disposable2.Dispose();
             }
         }
 
         private sealed class NAryEnumerable : StableCompositeDisposable
         {
-            private volatile List<IDisposable> _disposables;
+            private volatile List<IDisposable>? _disposables;
 
             public NAryEnumerable(IEnumerable<IDisposable> disposables)
             {
@@ -119,7 +120,7 @@ namespace System.Reactive.Disposables
                 //
                 // Doing this on the list to avoid duplicate enumeration of disposables.
                 //
-                if (_disposables.Contains(null))
+                if (_disposables.Contains(null!))
                 {
                     throw new ArgumentException(Strings_Core.DISPOSABLES_CANT_CONTAIN_NULL, nameof(disposables));
                 }
@@ -142,19 +143,20 @@ namespace System.Reactive.Disposables
 
         private sealed class NAryArray : StableCompositeDisposable
         {
-            private IDisposable[] _disposables;
+            private IDisposable[]? _disposables;
 
             public NAryArray(IDisposable[] disposables)
             {
-                var n = disposables.Length;
-                var ds = new IDisposable[n];
-                // These are likely already vectorized in the framework
-                // At least they are faster than loop-copying
-                Array.Copy(disposables, 0, ds, 0, n);
-                if (Array.IndexOf(ds, null) != -1)
+                if (Array.IndexOf(disposables, null!) != -1)
                 {
                     throw new ArgumentException(Strings_Core.DISPOSABLES_CANT_CONTAIN_NULL, nameof(disposables));
                 }
+
+                var n = disposables.Length;
+                var ds = new IDisposable[n];
+
+                Array.Copy(disposables, 0, ds, 0, n);
+
                 Volatile.Write(ref _disposables, ds);
             }
 
@@ -179,7 +181,7 @@ namespace System.Reactive.Disposables
         /// </summary>
         private sealed class NAryTrustedArray : StableCompositeDisposable
         {
-            private IDisposable[] _disposables;
+            private IDisposable[]? _disposables;
 
             public NAryTrustedArray(IDisposable[] disposables)
             {
@@ -201,4 +203,5 @@ namespace System.Reactive.Disposables
             }
         }
     }
+#pragma warning restore CA1063
 }

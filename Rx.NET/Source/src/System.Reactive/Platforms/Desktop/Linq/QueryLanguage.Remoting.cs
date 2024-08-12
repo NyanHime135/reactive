@@ -1,8 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
-#if !NO_REMOTING
+#if HAS_REMOTING
 using System.Reactive.Disposables;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Lifetime;
@@ -54,8 +54,8 @@ using System.Threading;
 //
 // The two CodeAnalysis suppressions below are explained by the Justification property (scroll to the right):
 //
-[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2136:TransparencyAnnotationsShouldNotConflictFxCopRule", Scope = "member", Target = "System.Reactive.Linq.QueryLanguage+RemotableObserver`1.#Unregister()", Justification = "This error only occurs while running FxCop on local builds that don't have NO_CODECOVERAGE set, causing the assembly not to be marked with APTCA (see AssemblyInfo.cs). When APTCA is enabled in official builds, this SecurityTreatAsSafe annotation is required.")]
-[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2136:TransparencyAnnotationsShouldNotConflictFxCopRule", Scope = "member", Target = "System.Reactive.Linq.QueryLanguage+RemotableObservable`1+RemotableSubscription.#Unregister()", Justification = "This error only occurs while running FxCop on local builds that don't have NO_CODECOVERAGE set, causing the assembly not to be marked with APTCA (see AssemblyInfo.cs). When APTCA is enabled in official builds, this SecurityTreatAsSafe annotation is required.")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2136:TransparencyAnnotationsShouldNotConflictFxCopRule", Scope = "member", Target = "~M:System.Reactive.Linq.RemotingObservable.RemotableObserver`1.Unregister", Justification = "This error only occurs while running FxCop on local builds that don't have NO_CODECOVERAGE set, causing the assembly not to be marked with APTCA (see AssemblyInfo.cs). When APTCA is enabled in official builds, this SecurityTreatAsSafe annotation is required.")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2136:TransparencyAnnotationsShouldNotConflictFxCopRule", Scope = "member", Target = "~M:System.Reactive.Linq.RemotingObservable.RemotableObservable`1.RemotableSubscription.Unregister", Justification = "This error only occurs while running FxCop on local builds that don't have NO_CODECOVERAGE set, causing the assembly not to be marked with APTCA (see AssemblyInfo.cs). When APTCA is enabled in official builds, this SecurityTreatAsSafe annotation is required.")]
 
 namespace System.Reactive.Linq
 {
@@ -68,7 +68,7 @@ namespace System.Reactive.Linq
             return new SerializableObservable<TSource>(new RemotableObservable<TSource>(source, null));
         }
 
-        private static IObservable<TSource> Remotable_<TSource>(IObservable<TSource> source, ILease lease)
+        private static IObservable<TSource> Remotable_<TSource>(IObservable<TSource> source, ILease? lease)
         {
             return new SerializableObservable<TSource>(new RemotableObservable<TSource>(source, lease));
         }
@@ -140,10 +140,7 @@ namespace System.Reactive.Linq
             private void Unregister()
             {
                 var lease = (ILease)RemotingServices.GetLifetimeService(this);
-                if (lease != null)
-                {
-                    lease.Unregister(this);
-                }
+                lease?.Unregister(this);
             }
 
             [SecurityCritical]
@@ -165,9 +162,9 @@ namespace System.Reactive.Linq
         private sealed class RemotableObservable<T> : MarshalByRefObject, IObservable<T>
         {
             private readonly IObservable<T> _underlyingObservable;
-            private readonly ILease _lease;
+            private readonly ILease? _lease;
 
-            public RemotableObservable(IObservable<T> underlyingObservable, ILease lease)
+            public RemotableObservable(IObservable<T> underlyingObservable, ILease? lease)
             {
                 _underlyingObservable = underlyingObservable;
                 _lease = lease;
@@ -182,7 +179,7 @@ namespace System.Reactive.Linq
             }
 
             [SecurityCritical]
-            public override object InitializeLifetimeService()
+            public override object? InitializeLifetimeService()
             {
                 return _lease;
             }
@@ -211,10 +208,7 @@ namespace System.Reactive.Linq
                 private void Unregister()
                 {
                     var lease = (ILease)RemotingServices.GetLifetimeService(this);
-                    if (lease != null)
-                    {
-                        lease.Unregister(this);
-                    }
+                    lease?.Unregister(this);
                 }
 
                 [SecurityCritical]

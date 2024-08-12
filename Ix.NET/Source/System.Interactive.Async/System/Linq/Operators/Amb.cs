@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -10,6 +10,14 @@ namespace System.Linq
 {
     public static partial class AsyncEnumerableEx
     {
+        /// <summary>
+        /// Propagates the async-enumerable sequence that reacts first.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements in the source sequences.</typeparam>
+        /// <param name="first">First async-enumerable sequence.</param>
+        /// <param name="second">Second async-enumerable sequence.</param>
+        /// <returns>An async-enumerable sequence that surfaces either of the given sequences, whichever reacted first.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="first"/> or <paramref name="second"/> is null.</exception>
         public static IAsyncEnumerable<TSource> Amb<TSource>(this IAsyncEnumerable<TSource> first, IAsyncEnumerable<TSource> second)
         {
             if (first == null)
@@ -17,15 +25,23 @@ namespace System.Linq
             if (second == null)
                 throw Error.ArgumentNull(nameof(second));
 
-            return AsyncEnumerable.Create(Core);
+            return Core(first, second);
 
-            async IAsyncEnumerator<TSource> Core(CancellationToken cancellationToken)
+            static async IAsyncEnumerable<TSource> Core(IAsyncEnumerable<TSource> first, IAsyncEnumerable<TSource> second, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
             {
                 IAsyncEnumerator<TSource>? firstEnumerator = null;
                 IAsyncEnumerator<TSource>? secondEnumerator = null;
 
                 Task<bool>? firstMoveNext = null;
                 Task<bool>? secondMoveNext = null;
+
+                //
+                // We need separate tokens for each source so that the non-winner can get disposed and unblocked
+                // i.e., see Never()
+                //
+
+                var firstCancelToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                var secondCancelToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
                 try
                 {
@@ -36,7 +52,7 @@ namespace System.Linq
                     //         adding a WhenAny combinator that does exactly that. We can even avoid calling AsTask.
                     //
 
-                    firstEnumerator = first.GetAsyncEnumerator(cancellationToken);
+                    firstEnumerator = first.GetAsyncEnumerator(firstCancelToken.Token);
                     firstMoveNext = firstEnumerator.MoveNextAsync().AsTask();
 
                     //
@@ -44,11 +60,14 @@ namespace System.Linq
                     //         overload which performs GetAsyncEnumerator/MoveNextAsync in pairs, rather than phased.
                     //
 
-                    secondEnumerator = second.GetAsyncEnumerator(cancellationToken);
+                    secondEnumerator = second.GetAsyncEnumerator(secondCancelToken.Token);
                     secondMoveNext = secondEnumerator.MoveNextAsync().AsTask();
                 }
                 catch
                 {
+                    secondCancelToken.Cancel();
+                    firstCancelToken.Cancel();
+
                     // NB: AwaitMoveNextAsyncAndDispose checks for null for both arguments, reducing the need for many null
                     //     checks over here.
 
@@ -57,6 +76,7 @@ namespace System.Linq
                         AwaitMoveNextAsyncAndDispose(secondMoveNext, secondEnumerator),
                         AwaitMoveNextAsyncAndDispose(firstMoveNext, firstEnumerator)
                     };
+
 
                     await Task.WhenAll(cleanup).ConfigureAwait(false);
 
@@ -83,16 +103,18 @@ namespace System.Linq
                 if (moveNextWinner == firstMoveNext)
                 {
                     winner = firstEnumerator;
+                    secondCancelToken.Cancel();
                     disposeLoser = AwaitMoveNextAsyncAndDispose(secondMoveNext, secondEnumerator);
                 }
                 else
                 {
                     winner = secondEnumerator;
+                    firstCancelToken.Cancel();
                     disposeLoser = AwaitMoveNextAsyncAndDispose(firstMoveNext, firstEnumerator);
                 }
 
                 try
-                {                    
+                {
                     await using (winner.ConfigureAwait(false))
                     {
                         if (!await moveNextWinner.ConfigureAwait(false))
@@ -126,14 +148,21 @@ namespace System.Linq
             }
         }
 
+        /// <summary>
+        /// Propagates the async-enumerable sequence that reacts first.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements in the source sequences.</typeparam>
+        /// <param name="sources">Observable sources competing to react first.</param>
+        /// <returns>An async-enumerable sequence that surfaces any of the given sequences, whichever reacted first.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="sources"/> is null.</exception>
         public static IAsyncEnumerable<TSource> Amb<TSource>(params IAsyncEnumerable<TSource>[] sources)
         {
             if (sources == null)
                 throw Error.ArgumentNull(nameof(sources));
 
-            return AsyncEnumerable.Create(Core);
+            return Core(sources);
 
-            async IAsyncEnumerator<TSource> Core(CancellationToken cancellationToken)
+            static async IAsyncEnumerable<TSource> Core(IAsyncEnumerable<TSource>[] sources, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
             {
                 //
                 // REVIEW: See remarks on binary overload for changes compared to the original.
@@ -143,12 +172,17 @@ namespace System.Linq
 
                 var enumerators = new IAsyncEnumerator<TSource>[n];
                 var moveNexts = new Task<bool>[n];
+                var individualTokenSources = new CancellationTokenSource[n];
+                for (var i = 0; i < n; i++)
+                {
+                    individualTokenSources[i] = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                }
 
                 try
                 {
                     for (var i = 0; i < n; i++)
                     {
-                        var enumerator = sources[i].GetAsyncEnumerator(cancellationToken);
+                        var enumerator = sources[i].GetAsyncEnumerator(individualTokenSources[i].Token);
 
                         enumerators[i] = enumerator;
                         moveNexts[i] = enumerator.MoveNextAsync().AsTask();
@@ -158,12 +192,15 @@ namespace System.Linq
                 {
                     var cleanup = new Task[n];
 
-                    for (var i = 0; i < n; i++)
+                    for (var i = n - 1; i >= 0; i--)
                     {
+                        individualTokenSources[i].Cancel();
+
                         cleanup[i] = AwaitMoveNextAsyncAndDispose(moveNexts[i], enumerators[i]);
                     }
 
                     await Task.WhenAll(cleanup).ConfigureAwait(false);
+
                     throw;
                 }
 
@@ -185,10 +222,11 @@ namespace System.Linq
 
                 var loserCleanupTasks = new List<Task>(n - 1);
 
-                for (var i = 0; i < n; i++)
+                for (var i = n - 1; i >= 0; i--)
                 {
                     if (i != winnerIndex)
                     {
+                        individualTokenSources[i].Cancel();
                         var loserCleanupTask = AwaitMoveNextAsyncAndDispose(moveNexts[i], enumerators[i]);
                         loserCleanupTasks.Add(loserCleanupTask);
                     }
@@ -220,6 +258,13 @@ namespace System.Linq
             }
         }
 
+        /// <summary>
+        /// Propagates the async-enumerable sequence that reacts first.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements in the source sequences.</typeparam>
+        /// <param name="sources">Observable sources competing to react first.</param>
+        /// <returns>An async-enumerable sequence that surfaces any of the given sequences, whichever reacted first.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="sources"/> is null.</exception>
         public static IAsyncEnumerable<TSource> Amb<TSource>(this IEnumerable<IAsyncEnumerable<TSource>> sources)
         {
             if (sources == null)
@@ -236,7 +281,14 @@ namespace System.Linq
                 {
                     if (moveNextAsync != null)
                     {
-                        await moveNextAsync.ConfigureAwait(false);
+                        try
+                        {
+                            await moveNextAsync.ConfigureAwait(false);
+                        }
+                        catch (TaskCanceledException)
+                        {
+                            // ignored because of cancelling the non-winners
+                        }
                     }
                 }
             }

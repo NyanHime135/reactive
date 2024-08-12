@@ -1,18 +1,19 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
 using System.Reactive.Linq;
 using Microsoft.Reactive.Testing;
 using ReactiveTests.Dummies;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace ReactiveTests.Tests
 {
+    [TestClass]
     public class FirstAsyncTest : ReactiveTest
     {
-        [Fact]
+        [TestMethod]
         public void FirstAsync_ArgumentChecking()
         {
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.FirstAsync(default(IObservable<int>)));
@@ -20,7 +21,7 @@ namespace ReactiveTests.Tests
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.FirstAsync(DummyObservable<int>.Instance, default));
         }
 
-        [Fact]
+        [TestMethod]
         public void FirstAsync_Empty()
         {
             var scheduler = new TestScheduler();
@@ -43,7 +44,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void FirstAsync_One()
         {
             var scheduler = new TestScheduler();
@@ -68,7 +69,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void FirstAsync_Many()
         {
             var scheduler = new TestScheduler();
@@ -94,7 +95,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void FirstAsync_Error()
         {
             var scheduler = new TestScheduler();
@@ -119,7 +120,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void FirstAsync_Predicate()
         {
             var scheduler = new TestScheduler();
@@ -147,7 +148,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void FirstAsync_Predicate_None()
         {
             var scheduler = new TestScheduler();
@@ -174,7 +175,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void FirstAsync_Predicate_Throw()
         {
             var scheduler = new TestScheduler();
@@ -200,7 +201,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void FirstAsync_PredicateThrows()
         {
             var scheduler = new TestScheduler();

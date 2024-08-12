@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -20,7 +20,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _scheduler = scheduler;
         }
 
-        protected override RangeSink CreateSink(IObserver<int> observer) => new RangeSink(_start, _count, observer);
+        protected override RangeSink CreateSink(IObserver<int> observer) => new(_start, _count, observer);
 
         protected override void Run(RangeSink sink) => sink.Run(_scheduler);
 
@@ -28,7 +28,7 @@ namespace System.Reactive.Linq.ObservableImpl
         {
             private readonly int _end;
             private int _index;
-            private IDisposable _task;
+            private MultipleAssignmentDisposableValue _task;
 
             public RangeSink(int start, int count, IObserver<int> observer)
                 : base(observer)
@@ -39,8 +39,8 @@ namespace System.Reactive.Linq.ObservableImpl
 
             public void Run(IScheduler scheduler)
             {
-                var first = scheduler.Schedule(this, (innerScheduler, @this) => @this.LoopRec(innerScheduler));
-                Disposable.TrySetSingle(ref _task, first);
+                var first = scheduler.Schedule(this, static (innerScheduler, @this) => @this.LoopRec(innerScheduler));
+                _task.TrySetFirst(first);
             }
 
             protected override void Dispose(bool disposing)
@@ -48,24 +48,26 @@ namespace System.Reactive.Linq.ObservableImpl
                 base.Dispose(disposing);
                 if (disposing)
                 {
-                    Disposable.TryDispose(ref _task);
+                    _task.Dispose();
                 }
             }
 
             private IDisposable LoopRec(IScheduler scheduler)
             {
                 var idx = _index;
+
                 if (idx != _end)
                 {
                     _index = idx + 1;
                     ForwardOnNext(idx);
-                    var next = scheduler.Schedule(this, (innerScheduler, @this) => @this.LoopRec(innerScheduler));
-                    Disposable.TrySetMultiple(ref _task, next);
+                    var next = scheduler.Schedule(this, static (innerScheduler, @this) => @this.LoopRec(innerScheduler));
+                    _task.Disposable = next;
                 }
                 else
                 {
                     ForwardOnCompleted();
                 }
+
                 return Disposable.Empty;
             }
         }
@@ -84,7 +86,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _scheduler = scheduler;
         }
 
-        protected override RangeSink CreateSink(IObserver<int> observer) => new RangeSink(_start, _count, observer);
+        protected override RangeSink CreateSink(IObserver<int> observer) => new(_start, _count, observer);
 
         protected override void Run(RangeSink sink) => sink.Run(_scheduler);
 
@@ -102,13 +104,14 @@ namespace System.Reactive.Linq.ObservableImpl
 
             public void Run(ISchedulerLongRunning scheduler)
             {
-                SetUpstream(scheduler.ScheduleLongRunning(this, (@this, cancel) => @this.Loop(cancel)));
+                SetUpstream(scheduler.ScheduleLongRunning(this, static (@this, cancel) => @this.Loop(cancel)));
             }
 
             private void Loop(ICancelable cancel)
             {
                 var idx = _index;
                 var end = _end;
+
                 while (!cancel.IsDisposed && idx != end)
                 {
                     ForwardOnNext(idx++);

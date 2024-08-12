@@ -1,19 +1,22 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
 using System.Reactive.Linq;
 using Microsoft.Reactive.Testing;
 using ReactiveTests.Dummies;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+using Assert = Xunit.Assert;
 
 namespace ReactiveTests.Tests
 {
+    [TestClass]
     public class DeferTest : ReactiveTest
     {
 
-        [Fact]
+        [TestMethod]
         public void Defer_ArgumentChecking()
         {
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Defer(default(Func<IObservable<int>>)));
@@ -21,7 +24,7 @@ namespace ReactiveTests.Tests
             ReactiveAssert.Throws</*some*/Exception>(() => Observable.Defer(() => default(IObservable<int>)).Subscribe());
         }
 
-        [Fact]
+        [TestMethod]
         public void Defer_Complete()
         {
             var scheduler = new TestScheduler();
@@ -52,7 +55,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Defer_Error()
         {
             var scheduler = new TestScheduler();
@@ -84,7 +87,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Defer_Dispose()
         {
             var scheduler = new TestScheduler();
@@ -116,7 +119,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Defer_Throw()
         {
             var scheduler = new TestScheduler();

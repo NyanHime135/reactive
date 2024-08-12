@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -18,14 +18,14 @@ namespace System.Reactive
         private const int Running = 1;
         private const int Pending = 2;
         private const int Faulted = 9;
-        private readonly ConcurrentQueue<T> _queue = new ConcurrentQueue<T>();
+        private readonly ConcurrentQueue<T> _queue = new();
         private bool _failed;
-        private Exception _error;
+        private Exception? _error;
         private bool _completed;
         private readonly IObserver<T> _observer;
         private readonly IScheduler _scheduler;
-        private readonly ISchedulerLongRunning _longRunning;
-        private IDisposable _disposable;
+        private readonly ISchedulerLongRunning? _longRunning;
+        private SerialDisposableValue _disposable;
 
         public ScheduledObserver(IScheduler scheduler, IObserver<T> observer)
         {
@@ -42,11 +42,11 @@ namespace System.Reactive
 
         private sealed class SemaphoreSlimRelease : IDisposable
         {
-            private SemaphoreSlim _dispatcherEvent;
+            private volatile SemaphoreSlim? _dispatcherEvent;
 
             public SemaphoreSlimRelease(SemaphoreSlim dispatcherEvent)
             {
-                Volatile.Write(ref _dispatcherEvent, dispatcherEvent);
+                _dispatcherEvent = dispatcherEvent;
             }
 
             public void Dispose()
@@ -55,10 +55,10 @@ namespace System.Reactive
             }
         }
 
-        private readonly object _dispatcherInitGate = new object();
-        private readonly SemaphoreSlim _dispatcherEvent;
-        private readonly IDisposable _dispatcherEventRelease;
-        private IDisposable _dispatcherJob;
+        private readonly object _dispatcherInitGate = new();
+        private readonly SemaphoreSlim? _dispatcherEvent;
+        private readonly IDisposable? _dispatcherEventRelease;
+        private IDisposable? _dispatcherJob;
 
         private void EnsureDispatcher()
         {
@@ -68,13 +68,13 @@ namespace System.Reactive
                 {
                     if (_dispatcherJob == null)
                     {
-                        _dispatcherJob = _longRunning.ScheduleLongRunning(Dispatch);
+                        _dispatcherJob = _longRunning!.ScheduleLongRunning(Dispatch); // NB: Only reachable when long-running.
 
-                        Disposable.TrySetSerial(ref _disposable, StableCompositeDisposable.Create
+                        _disposable.Disposable = StableCompositeDisposable.Create
                         (
                             _dispatcherJob,
-                            _dispatcherEventRelease
-                        ));
+                            _dispatcherEventRelease!
+                        );
                     }
                 }
             }
@@ -84,15 +84,14 @@ namespace System.Reactive
         {
             while (true)
             {
-                _dispatcherEvent.Wait();
+                _dispatcherEvent!.Wait(); // NB: If long-running, the event is set.
 
                 if (cancel.IsDisposed)
                 {
                     return;
                 }
 
-                var next = default(T);
-                while (_queue.TryDequeue(out next))
+                while (_queue.TryDequeue(out var next))
                 {
                     try
                     {
@@ -117,7 +116,7 @@ namespace System.Reactive
 
                 if (_failed)
                 {
-                    _observer.OnError(_error);
+                    _observer.OnError(_error!);
                     Dispose();
                     return;
                 }
@@ -139,7 +138,7 @@ namespace System.Reactive
             {
                 if (n > 0)
                 {
-                    _dispatcherEvent.Release(n);
+                    _dispatcherEvent!.Release(n); // NB: If long-running, the event is set.
                 }
 
                 EnsureDispatcher();
@@ -199,13 +198,14 @@ namespace System.Reactive
 
             if (isOwner)
             {
-                Disposable.TrySetSerial(ref _disposable, _scheduler.Schedule<object>(null, Run));
+                _disposable.Disposable = _scheduler.Schedule<object?>(null, Run);
             }
         }
 
-        private void Run(object state, Action<object> recurse)
+        private void Run(object? state, Action<object?> recurse)
         {
-            var next = default(T);
+            T? next;
+
             while (!_queue.TryDequeue(out next))
             {
                 if (_failed)
@@ -230,7 +230,7 @@ namespace System.Reactive
                     }
 
                     Interlocked.Exchange(ref _state, Stopped);
-                    _observer.OnError(_error);
+                    _observer.OnError(_error!);
                     Dispose();
                     return;
                 }
@@ -317,14 +317,14 @@ namespace System.Reactive
 
             if (disposing)
             {
-                Disposable.TryDispose(ref _disposable);
+                _disposable.Dispose();
             }
         }
     }
 
     internal sealed class ObserveOnObserver<T> : ScheduledObserver<T>
     {
-        private IDisposable _run;
+        private SingleAssignmentDisposableValue _run;
 
         public ObserveOnObserver(IScheduler scheduler, IObserver<T> observer)
             : base(scheduler, observer)
@@ -334,7 +334,7 @@ namespace System.Reactive
 
         public void Run(IObservable<T> source)
         {
-            Disposable.SetSingle(ref _run, source.SubscribeSafe(this));
+            _run.Disposable = source.SubscribeSafe(this);
         }
 
         protected override void OnNextCore(T value)
@@ -361,7 +361,7 @@ namespace System.Reactive
 
             if (disposing)
             {
-                Disposable.TryDispose(ref _run);
+                _run.Dispose();
             }
         }
     }
@@ -386,7 +386,7 @@ namespace System.Reactive
         /// <summary>
         /// The current task representing a running drain operation.
         /// </summary>
-        private IDisposable _task;
+        private IDisposable? _task;
 
         /// <summary>
         /// Indicates the work-in-progress state of this operator,
@@ -403,7 +403,7 @@ namespace System.Reactive
         /// If <see cref="_done"/> is true and this is non-null, the upstream
         /// failed with an OnError.
         /// </summary>
-        private Exception _error;
+        private Exception? _error;
 
         /// <summary>
         /// Indicates a dispose has been requested.
@@ -423,7 +423,7 @@ namespace System.Reactive
             base.Dispose(disposing);
             if (disposing)
             {
-                Disposable.TryDispose(ref _task);
+                Disposable.Dispose(ref _task);
                 Clear(_queue);
             }
         }
@@ -436,7 +436,7 @@ namespace System.Reactive
         /// _queue field is not re-read from memory unnecessarily
         /// due to the memory barriers inside TryDequeue mandating it
         /// despite the field is read-only.</param>
-        private void Clear(ConcurrentQueue<T> q)
+        private static void Clear(ConcurrentQueue<T> q)
         {
             while (q.TryDequeue(out var _))
             {
@@ -494,7 +494,7 @@ namespace System.Reactive
         /// whenever the signals have to be drained.
         /// </summary>
         private static readonly Func<IScheduler, ObserveOnObserverNew<T>, IDisposable> DrainShortRunningFunc =
-            (scheduler, self) => self.DrainShortRunning(scheduler);
+            static (scheduler, self) => self.DrainShortRunning(scheduler);
 
         /// <summary>
         /// Emits at most one signal per run on a scheduler that doesn't like
@@ -556,25 +556,20 @@ namespace System.Reactive
             }
 
             // get the next item from the queue if any
-            var empty = !q.TryDequeue(out var v);
+            if (q.TryDequeue(out var v))
+            {
+                ForwardOnNext(v);
+                return;
+            }
 
             // the upstream called OnComplete and the queue is empty
             // that means we are done, no further signals can happen
-            if (d && empty)
+            if (d)
             {
                 Volatile.Write(ref _disposed, true);
                 // otherwise, complete normally
                 ForwardOnCompleted();
-                return;
             }
-            
-            // the queue is empty and the upstream hasn't completed yet
-            if (empty)
-            {
-                return;
-            }
-            // emit the item
-            ForwardOnNext(v);
         }
     }
 
@@ -615,7 +610,7 @@ namespace System.Reactive
         /// <summary>
         /// Set to a non-null Exception if the upstream terminated with OnError.
         /// </summary>
-        private Exception _error;
+        private Exception? _error;
 
         /// <summary>
         /// Indicates the sequence has been disposed and the drain task should quit.
@@ -631,7 +626,7 @@ namespace System.Reactive
         /// <summary>
         /// The disposable tracking the drain task.
         /// </summary>
-        private IDisposable _drainTask;
+        private SingleAssignmentDisposableValue _drainTask;
 
         public ObserveOnObserverLongRunning(ISchedulerLongRunning scheduler, IObserver<TSource> observer) : base(observer)
         {
@@ -665,7 +660,7 @@ namespace System.Reactive
             if (Volatile.Read(ref _runDrainOnce) == 0
                 && Interlocked.CompareExchange(ref _runDrainOnce, 1, 0) == 0)
             {
-                Disposable.SetSingle(ref _drainTask, _scheduler.ScheduleLongRunning(this, DrainLongRunning));
+                _drainTask.Disposable = _scheduler.ScheduleLongRunning(this, DrainLongRunning);
             }
 
             // Indicate more work is to be done by the drain loop
@@ -682,7 +677,7 @@ namespace System.Reactive
         /// <summary>
         /// Static reference to the Drain method, saves allocation.
         /// </summary>
-        private static readonly Action<ObserveOnObserverLongRunning<TSource>, ICancelable> DrainLongRunning = (self, cancelable) => self.Drain();
+        private static readonly Action<ObserveOnObserverLongRunning<TSource>, ICancelable> DrainLongRunning = static (self, cancelable) => self.Drain();
 
         protected override void Dispose(bool disposing)
         {
@@ -694,7 +689,7 @@ namespace System.Reactive
                 Monitor.Pulse(_suspendGuard);
             }
             // Cancel the drain task handle.
-            Disposable.TryDispose(ref _drainTask);
+            _drainTask.Dispose();
             base.Dispose(disposing);
         }
 
@@ -734,7 +729,7 @@ namespace System.Reactive
                 // There was an item, signal it.
                 if (hasValue)
                 {
-                    ForwardOnNext(item);
+                    ForwardOnNext(item!);
                     // Consume the item and try the next item if the work-in-progress
                     // indicator is still not zero
                     if (Interlocked.Decrement(ref _wip) != 0L)

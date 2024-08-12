@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -25,7 +25,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _comparer = comparer;
         }
 
-        protected override _ CreateSink(IObserver<IGroupedObservable<TKey, TElement>> observer) => new _(this, observer);
+        protected override _ CreateSink(IObserver<IGroupedObservable<TKey, TElement>> observer) => new(this, observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
@@ -33,10 +33,10 @@ namespace System.Reactive.Linq.ObservableImpl
         {
             private readonly Func<TSource, TKey> _keySelector;
             private readonly Func<TSource, TElement> _elementSelector;
-            private readonly Dictionary<TKey, Subject<TElement>> _map;
+            private readonly Grouping<TKey, TElement> _map;
 
-            private RefCountDisposable _refCountDisposable;
-            private Subject<TElement> _null;
+            private RefCountDisposable? _refCountDisposable;
+            private Subject<TElement>? _null;
 
             public _(GroupBy<TSource, TKey, TElement> parent, IObserver<IGroupedObservable<TKey, TElement>> observer)
                 : base(observer)
@@ -46,11 +46,11 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 if (parent._capacity.HasValue)
                 {
-                    _map = new Dictionary<TKey, Subject<TElement>>(parent._capacity.Value, parent._comparer);
+                    _map = new Grouping<TKey, TElement>(parent._capacity.Value, parent._comparer);
                 }
                 else
                 {
-                    _map = new Dictionary<TKey, Subject<TElement>>(parent._comparer);
+                    _map = new Grouping<TKey, TElement>(parent._comparer);
                 }
             }
 
@@ -65,7 +65,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
             public override void OnNext(TSource value)
             {
-                var key = default(TKey);
+                TKey key;
                 try
                 {
                     key = _keySelector(value);
@@ -77,7 +77,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 }
 
                 var fireNewMapEntry = false;
-                var writer = default(Subject<TElement>);
+                Subject<TElement>? writer;
                 try
                 {
                     //
@@ -126,11 +126,11 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 if (fireNewMapEntry)
                 {
-                    var group = new GroupedObservable<TKey, TElement>(key, writer, _refCountDisposable);
+                    var group = new GroupedObservable<TKey, TElement>(key, writer, _refCountDisposable!); // NB: _refCountDisposable is set in Run.
                     ForwardOnNext(group);
                 }
 
-                var element = default(TElement);
+                TElement element;
                 try
                 {
                     element = _elementSelector(value);

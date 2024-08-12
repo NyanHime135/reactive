@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -11,7 +11,7 @@ namespace ReactiveTests.Tests
 {
     internal class MySubject : ISubject<int>
     {
-        private Dictionary<int, IDisposable> _disposeOn = new Dictionary<int, IDisposable>();
+        private readonly Dictionary<int, IDisposable> _disposeOn = [];
 
         public void DisposeOn(int value, IDisposable disposable)
         {

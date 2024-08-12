@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.ComponentModel;
@@ -47,24 +47,23 @@ namespace System.Reactive.Concurrency
         {
             private sealed class Subscription : IDisposable
             {
-                private IDisposable _cancel;
+                private SerialDisposableValue _cancel;
 
                 public Subscription(IObservable<TSource> source, IScheduler scheduler, IObserver<TSource> observer)
                 {
-                    Disposable.TrySetSingle(
-                        ref _cancel,
+                    _cancel.TrySetFirst(
                         scheduler.Schedule(
                             (@this: this, source, observer),
                             (closureScheduler, state) =>
                             {
-                                Disposable.TrySetSerial(ref state.@this._cancel, new ScheduledDisposable(closureScheduler, state.source.SubscribeSafe(state.observer)));
+                                state.@this._cancel.Disposable = new ScheduledDisposable(closureScheduler, state.source.SubscribeSafe(state.observer));
                                 return Disposable.Empty;
                             }));
                 }
 
                 public void Dispose()
                 {
-                    Disposable.TryDispose(ref _cancel);
+                    _cancel.Dispose();
                 }
             }
 
@@ -117,7 +116,7 @@ namespace System.Reactive.Concurrency
                 private readonly IObservable<TSource> _source;
                 private readonly IObserver<TSource> _observer;
                 private readonly SynchronizationContext _context;
-                private IDisposable _cancel;
+                private SingleAssignmentDisposableValue _cancel;
 
                 public Subscription(IObservable<TSource> source, SynchronizationContext context, IObserver<TSource> observer)
                 {
@@ -128,9 +127,9 @@ namespace System.Reactive.Concurrency
                     context.PostWithStartComplete(
                         @this =>
                         {
-                            if (!Disposable.GetIsDisposed(ref @this._cancel))
+                            if (!@this._cancel.IsDisposed)
                             {
-                                Disposable.SetSingle(ref @this._cancel, new ContextDisposable(@this._context, @this._source.SubscribeSafe(@this._observer)));
+                                @this._cancel.Disposable = new ContextDisposable(@this._context, @this._source.SubscribeSafe(@this._observer));
                             }
                         },
                         this);
@@ -138,7 +137,7 @@ namespace System.Reactive.Concurrency
 
                 public void Dispose()
                 {
-                    Disposable.TryDispose(ref _cancel);
+                    _cancel.Dispose();
                 }
             }
 

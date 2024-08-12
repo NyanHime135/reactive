@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 namespace System.Reactive.Linq.ObservableImpl
@@ -15,13 +15,13 @@ namespace System.Reactive.Linq.ObservableImpl
                 _source = source;
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
             internal sealed class _ : IdentitySink<TSource>
             {
-                private TSource _value;
+                private TSource? _value;
                 private bool _seenValue;
 
                 public _(IObserver<TSource> observer)
@@ -46,11 +46,18 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (!_seenValue)
                     {
-                        ForwardOnError(new InvalidOperationException(Strings_Linq.NO_ELEMENTS));
+                        try
+                        {
+                            throw new InvalidOperationException(Strings_Linq.NO_ELEMENTS);
+                        }
+                        catch (Exception e)
+                        {
+                            ForwardOnError(e);
+                        }
                     }
                     else
                     {
-                        var value = _value;
+                        var value = _value!;
                         _value = default;
                         ForwardOnNext(value);
                         ForwardOnCompleted();
@@ -70,14 +77,14 @@ namespace System.Reactive.Linq.ObservableImpl
                 _predicate = predicate;
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(_predicate, observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(_predicate, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
             internal sealed class _ : IdentitySink<TSource>
             {
                 private readonly Func<TSource, bool> _predicate;
-                private TSource _value;
+                private TSource? _value;
                 private bool _seenValue;
 
                 public _(Func<TSource, bool> predicate, IObserver<TSource> observer)
@@ -118,11 +125,18 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (!_seenValue)
                     {
-                        ForwardOnError(new InvalidOperationException(Strings_Linq.NO_MATCHING_ELEMENTS));
+                        try
+                        {
+                            throw new InvalidOperationException(Strings_Linq.NO_MATCHING_ELEMENTS);
+                        }
+                        catch (Exception e)
+                        {
+                            ForwardOnError(e);
+                        }
                     }
                     else
                     {
-                        var value = _value;
+                        var value = _value!;
                         _value = default;
                         ForwardOnNext(value);
                         ForwardOnCompleted();

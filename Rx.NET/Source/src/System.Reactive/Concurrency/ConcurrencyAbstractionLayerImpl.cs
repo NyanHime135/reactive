@@ -1,8 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
-#if !NO_THREAD
 using System.Reactive.Disposables;
 using System.Threading;
 
@@ -13,21 +12,21 @@ namespace System.Reactive.Concurrency
     //          Another copy is kept in System.Reactive.PlatformServices to enlighten the default lowest common denominator
     //          behavior of Rx for PLIB when used on a more capable platform.
     //
-    internal class /*Default*/ConcurrencyAbstractionLayerImpl : IConcurrencyAbstractionLayer
+    internal sealed class /*Default*/ConcurrencyAbstractionLayerImpl : IConcurrencyAbstractionLayer
     {
         private sealed class WorkItem
         {
-            public WorkItem(Action<object> action, object state)
+            public WorkItem(Action<object?> action, object? state)
             {
                 Action = action;
                 State = state;
             }
 
-            public Action<object> Action { get; }
-            public object State { get; }
+            public Action<object?> Action { get; }
+            public object? State { get; }
         }
 
-        public IDisposable StartTimer(Action<object> action, object state, TimeSpan dueTime) => new Timer(action, state, Normalize(dueTime));
+        public IDisposable StartTimer(Action<object?> action, object? state, TimeSpan dueTime) => new Timer(action, state, Normalize(dueTime));
 
         public IDisposable StartPeriodicTimer(Action action, TimeSpan period)
         {
@@ -48,11 +47,11 @@ namespace System.Reactive.Concurrency
             return new PeriodicTimer(action, period);
         }
 
-        public IDisposable QueueUserWorkItem(Action<object> action, object state)
+        public IDisposable QueueUserWorkItem(Action<object?> action, object? state)
         {
-            ThreadPool.QueueUserWorkItem(itemObject =>
+            ThreadPool.QueueUserWorkItem(static itemObject =>
             {
-                var item = (WorkItem)itemObject;
+                var item = (WorkItem)itemObject!;
 
                 item.Action(item.State);
             }, new WorkItem(action, state));
@@ -66,11 +65,11 @@ namespace System.Reactive.Concurrency
 
         public bool SupportsLongRunning => true;
 
-        public void StartThread(Action<object> action, object state)
+        public void StartThread(Action<object?> action, object? state)
         {
-            new Thread(itemObject =>
+            new Thread(static itemObject =>
             {
-                var item = (WorkItem)itemObject;
+                var item = (WorkItem)itemObject!;
 
                 item.Action(item.State);
             })
@@ -152,52 +151,49 @@ namespace System.Reactive.Concurrency
 
         private sealed class Timer : IDisposable
         {
-            private volatile object _state;
-            private Action<object> _action;
-            private IDisposable _timer;
+            private volatile object? _state;
+            private Action<object?> _action;
+            private SingleAssignmentDisposableValue _timer;
 
-            private static readonly object DisposedState = new object();
+            private static readonly object DisposedState = new();
 
-            public Timer(Action<object> action, object state, TimeSpan dueTime)
+            public Timer(Action<object?> action, object? state, TimeSpan dueTime)
             {
                 _state = state;
                 _action = action;
 
-                Disposable.SetSingle(ref _timer, new System.Threading.Timer(_ => Tick(_), this, dueTime, TimeSpan.FromMilliseconds(Timeout.Infinite)));
+                _timer.Disposable = new System.Threading.Timer(static @this => ((Timer)@this!).Tick(), this, dueTime, TimeSpan.FromMilliseconds(Timeout.Infinite));
             }
 
-            private static void Tick(object state)
+            private void Tick()
             {
-                var timer = (Timer)state;
-
                 try
                 {
-                    var timerState = timer._state;
+                    var timerState = _state;
                     if (timerState != DisposedState)
                     {
-                        timer._action(timerState);
+                        _action(timerState);
                     }
                 }
                 finally
                 {
-                    Disposable.TryDispose(ref timer._timer);
+                    _timer.Dispose();
                 }
             }
 
             public void Dispose()
             {
-                if (Disposable.TryDispose(ref _timer))
-                {
-                    _action = Stubs<object>.Ignore;
-                    _state = DisposedState;
-                }
+                _timer.Dispose();
+
+                _action = Stubs<object?>.Ignore;
+                _state = DisposedState;
             }
         }
 
         private sealed class PeriodicTimer : IDisposable
         {
             private Action _action;
-            private volatile System.Threading.Timer _timer;
+            private volatile System.Threading.Timer? _timer;
 
             public PeriodicTimer(Action action, TimeSpan period)
             {
@@ -207,15 +203,10 @@ namespace System.Reactive.Concurrency
                 // Rooting of the timer happens through the timer's state
                 // which is the current instance and has a field to store the Timer instance.
                 //
-                _timer = new System.Threading.Timer(_ => Tick(_), this, period, period);
+                _timer = new System.Threading.Timer(static @this => ((PeriodicTimer)@this!).Tick(), this, period, period);
             }
 
-            private static void Tick(object state)
-            {
-                var timer = (PeriodicTimer)state;
-
-                timer._action();
-            }
+            private void Tick() => _action();
 
             public void Dispose()
             {
@@ -239,7 +230,7 @@ namespace System.Reactive.Concurrency
             {
                 _action = action;
 
-                new Thread(_ => Loop(_))
+                new Thread(static @this => ((FastPeriodicTimer)@this!).Loop())
                 {
                     Name = "Rx-FastPeriodicTimer",
                     IsBackground = true
@@ -247,21 +238,15 @@ namespace System.Reactive.Concurrency
                 .Start(this);
             }
 
-            private static void Loop(object threadParam)
+            private void Loop()
             {
-                var timer = (FastPeriodicTimer)threadParam;
-
-                while (!timer._disposed)
+                while (!_disposed)
                 {
-                    timer._action();
+                    _action();
                 }
             }
 
-            public void Dispose()
-            {
-                _disposed = true;
-            }
+            public void Dispose() => _disposed = true;
         }
     }
 }
-#endif

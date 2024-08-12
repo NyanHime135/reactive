@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -24,14 +24,14 @@ namespace System.Reactive.Linq.ObservableImpl
                 _skip = skip;
             }
 
-            protected override _ CreateSink(IObserver<IObservable<TSource>> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<IObservable<TSource>> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
             internal sealed class _ : Sink<TSource, IObservable<TSource>>
             {
-                private readonly Queue<ISubject<TSource>> _queue = new Queue<ISubject<TSource>>();
-                private readonly SingleAssignmentDisposable _m = new SingleAssignmentDisposable();
+                private readonly Queue<ISubject<TSource>> _queue = new();
+                private readonly SingleAssignmentDisposable _m = new();
                 private readonly RefCountDisposable _refCountDisposable;
 
                 private readonly int _count;
@@ -124,15 +124,15 @@ namespace System.Reactive.Linq.ObservableImpl
                 _scheduler = scheduler;
             }
 
-            protected override _ CreateSink(IObserver<IObservable<TSource>> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<IObservable<TSource>> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(this);
 
             internal sealed class _ : Sink<TSource, IObservable<TSource>>
             {
-                private readonly object _gate = new object();
-                private readonly Queue<ISubject<TSource>> _q = new Queue<ISubject<TSource>>();
-                private readonly SerialDisposable _timerD = new SerialDisposable();
+                private readonly object _gate = new();
+                private readonly Queue<ISubject<TSource>> _q = new();
+                private readonly SerialDisposable _timerD = new();
 
                 private readonly IScheduler _scheduler;
                 private readonly TimeSpan _timeShift;
@@ -144,7 +144,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     _timeShift = parent._timeShift;
                 }
 
-                private RefCountDisposable _refCountDisposable;
+                private RefCountDisposable? _refCountDisposable;
                 private TimeSpan _totalTime;
                 private TimeSpan _nextShift;
                 private TimeSpan _nextSpan;
@@ -170,7 +170,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     var s = new Subject<TSource>();
                     _q.Enqueue(s);
-                    ForwardOnNext(new WindowObservable<TSource>(s, _refCountDisposable));
+                    ForwardOnNext(new WindowObservable<TSource>(s, _refCountDisposable!)); // NB: _refCountDisposable gets assigned in Run.
                 }
 
                 private void CreateTimer()
@@ -208,7 +208,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         _nextShift += _timeShift;
                     }
 
-                    m.Disposable = _scheduler.ScheduleAction((@this: this, isSpan, isShift), ts, tuple => tuple.@this.Tick(tuple.isSpan, tuple.isShift));
+                    m.Disposable = _scheduler.ScheduleAction((@this: this, isSpan, isShift), ts, static tuple => tuple.@this.Tick(tuple.isSpan, tuple.isShift));
                 }
 
                 private void Tick(bool isSpan, bool isShift)
@@ -288,30 +288,31 @@ namespace System.Reactive.Linq.ObservableImpl
                 _scheduler = scheduler;
             }
 
-            protected override _ CreateSink(IObserver<IObservable<TSource>> observer) => new _(observer);
+            protected override _ CreateSink(IObserver<IObservable<TSource>> observer) => new(observer);
 
             protected override void Run(_ sink) => sink.Run(this);
 
             internal sealed class _ : Sink<TSource, IObservable<TSource>>
             {
-                private readonly object _gate = new object();
+                private readonly object _gate = new();
+                private Subject<TSource> _subject;
 
                 public _(IObserver<IObservable<TSource>> observer)
                     : base(observer)
                 {
+                    _subject = new Subject<TSource>();
                 }
 
-                private Subject<TSource> _subject;
-                private RefCountDisposable _refCountDisposable;
+                private RefCountDisposable? _refCountDisposable;
 
                 public void Run(TimeHopping parent)
                 {
                     var groupDisposable = new CompositeDisposable(2);
                     _refCountDisposable = new RefCountDisposable(groupDisposable);
 
-                    CreateWindow();
+                    NextWindow();
 
-                    groupDisposable.Add(parent._scheduler.SchedulePeriodic(this, parent._timeSpan, @this => @this.Tick()));
+                    groupDisposable.Add(parent._scheduler.SchedulePeriodic(this, parent._timeSpan, static @this => @this.Tick()));
                     groupDisposable.Add(parent._source.SubscribeSafe(this));
 
                     SetUpstream(_refCountDisposable);
@@ -322,14 +323,15 @@ namespace System.Reactive.Linq.ObservableImpl
                     lock (_gate)
                     {
                         _subject.OnCompleted();
-                        CreateWindow();
+
+                        _subject = new Subject<TSource>();
+                        NextWindow();
                     }
                 }
 
-                private void CreateWindow()
+                private void NextWindow()
                 {
-                    _subject = new Subject<TSource>();
-                    ForwardOnNext(new WindowObservable<TSource>(_subject, _refCountDisposable));
+                    ForwardOnNext(new WindowObservable<TSource>(_subject, _refCountDisposable!)); // NB: _refCountDisposable gets assigned in Run.
                 }
 
                 public override void OnNext(TSource value)
@@ -377,18 +379,20 @@ namespace System.Reactive.Linq.ObservableImpl
                 _scheduler = scheduler;
             }
 
-            protected override _ CreateSink(IObserver<IObservable<TSource>> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<IObservable<TSource>> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
             internal sealed class _ : Sink<TSource, IObservable<TSource>>
             {
-                private readonly object _gate = new object();
-                private readonly SerialDisposable _timerD = new SerialDisposable();
+                private readonly object _gate = new();
+                private readonly SerialDisposable _timerD = new();
 
                 private readonly int _count;
                 private readonly TimeSpan _timeSpan;
                 private readonly IScheduler _scheduler;
+
+                private Subject<TSource> _s;
 
                 public _(Ferry parent, IObserver<IObservable<TSource>> observer)
                     : base(observer)
@@ -396,20 +400,20 @@ namespace System.Reactive.Linq.ObservableImpl
                     _count = parent._count;
                     _timeSpan = parent._timeSpan;
                     _scheduler = parent._scheduler;
+
+                    _s = new Subject<TSource>();
                 }
 
-                private Subject<TSource> _s;
                 private int _n;
 
-                private RefCountDisposable _refCountDisposable;
+                private RefCountDisposable? _refCountDisposable;
 
                 public override void Run(IObservable<TSource> source)
                 {
                     var groupDisposable = new CompositeDisposable(2) { _timerD };
                     _refCountDisposable = new RefCountDisposable(groupDisposable);
 
-                    _s = new Subject<TSource>();
-                    ForwardOnNext(new WindowObservable<TSource>(_s, _refCountDisposable));
+                    NextWindow();
                     CreateTimer(_s);
 
                     groupDisposable.Add(source.SubscribeSafe(this));
@@ -422,12 +426,18 @@ namespace System.Reactive.Linq.ObservableImpl
                     var m = new SingleAssignmentDisposable();
                     _timerD.Disposable = m;
 
-                    m.Disposable = _scheduler.ScheduleAction((@this: this, window), _timeSpan, tuple => tuple.@this.Tick(tuple.window));
+                    m.Disposable = _scheduler.ScheduleAction((@this: this, window), _timeSpan, static tuple => tuple.@this.Tick(tuple.window));
+                }
+
+                private void NextWindow()
+                {
+                    ForwardOnNext(new WindowObservable<TSource>(_s, _refCountDisposable!)); // NB: _refCountDisposable gets assigned in Run.
                 }
 
                 private void Tick(Subject<TSource> window)
                 {
-                    var newWindow = default(Subject<TSource>);
+                    Subject<TSource> newWindow;
+
                     lock (_gate)
                     {
                         if (window != _s)
@@ -440,7 +450,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                         _s.OnCompleted();
                         _s = newWindow;
-                        ForwardOnNext(new WindowObservable<TSource>(_s, _refCountDisposable));
+                        NextWindow();
                     }
 
                     CreateTimer(newWindow);
@@ -448,7 +458,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var newWindow = default(Subject<TSource>);
+                    Subject<TSource>? newWindow = null;
 
                     lock (_gate)
                     {
@@ -462,7 +472,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                             _s.OnCompleted();
                             _s = newWindow;
-                            ForwardOnNext(new WindowObservable<TSource>(_s, _refCountDisposable));
+                            NextWindow();
                         }
                     }
 
@@ -506,47 +516,52 @@ namespace System.Reactive.Linq.ObservableImpl
                 _windowClosingSelector = windowClosingSelector;
             }
 
-            protected override _ CreateSink(IObserver<IObservable<TSource>> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<IObservable<TSource>> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
             internal sealed class _ : Sink<TSource, IObservable<TSource>>
             {
-                private readonly object _gate = new object();
-                private readonly AsyncLock _windowGate = new AsyncLock();
-                private readonly SerialDisposable _m = new SerialDisposable();
-
+                private readonly object _gate = new();
+                private readonly AsyncLock _windowGate = new();
+                private readonly SerialDisposable _m = new();
                 private readonly Func<IObservable<TWindowClosing>> _windowClosingSelector;
+
+                private Subject<TSource> _window;
 
                 public _(Selector parent, IObserver<IObservable<TSource>> observer)
                     : base(observer)
                 {
                     _windowClosingSelector = parent._windowClosingSelector;
+
+                    _window = new Subject<TSource>();
                 }
 
-                private ISubject<TSource> _window;
-                private RefCountDisposable _refCountDisposable;
+                private RefCountDisposable? _refCountDisposable;
 
                 public override void Run(IObservable<TSource> source)
                 {
-                    _window = new Subject<TSource>();
-
                     var groupDisposable = new CompositeDisposable(2) { _m };
                     _refCountDisposable = new RefCountDisposable(groupDisposable);
 
-                    var window = new WindowObservable<TSource>(_window, _refCountDisposable);
-                    ForwardOnNext(window);
+                    NextWindow();
 
                     groupDisposable.Add(source.SubscribeSafe(this));
 
-                    _windowGate.Wait(this, @this => @this.CreateWindowClose());
+                    _windowGate.Wait(this, static @this => @this.CreateWindowClose());
 
                     SetUpstream(_refCountDisposable);
                 }
 
+                private void NextWindow()
+                {
+                    var window = new WindowObservable<TSource>(_window, _refCountDisposable!); // NB: _refCountDisposable gets assigned in Run.
+                    ForwardOnNext(window);
+                }
+
                 private void CreateWindowClose()
                 {
-                    var windowClose = default(IObservable<TWindowClosing>);
+                    IObservable<TWindowClosing> windowClose;
                     try
                     {
                         windowClose = _windowClosingSelector();
@@ -574,11 +589,10 @@ namespace System.Reactive.Linq.ObservableImpl
                         _window.OnCompleted();
                         _window = new Subject<TSource>();
 
-                        var window = new WindowObservable<TSource>(_window, _refCountDisposable);
-                        ForwardOnNext(window);
+                        NextWindow();
                     }
 
-                    _windowGate.Wait(this, @this => @this.CreateWindowClose());
+                    _windowGate.Wait(this, static @this => @this.CreateWindowClose());
                 }
 
                 private sealed class WindowClosingObserver : SafeObserver<TWindowClosing>
@@ -645,36 +659,41 @@ namespace System.Reactive.Linq.ObservableImpl
                 _windowBoundaries = windowBoundaries;
             }
 
-            protected override _ CreateSink(IObserver<IObservable<TSource>> observer) => new _(observer);
+            protected override _ CreateSink(IObserver<IObservable<TSource>> observer) => new(observer);
 
             protected override void Run(_ sink) => sink.Run(this);
 
             internal sealed class _ : Sink<TSource, IObservable<TSource>>
             {
-                private readonly object _gate = new object();
+                private readonly object _gate = new();
+
+                private Subject<TSource> _window;
 
                 public _(IObserver<IObservable<TSource>> observer)
                     : base(observer)
                 {
+                    _window = new Subject<TSource>();
                 }
 
-                private ISubject<TSource> _window;
-                private RefCountDisposable _refCountDisposable;
+                private RefCountDisposable? _refCountDisposable;
 
                 public void Run(Boundaries parent)
                 {
-                    _window = new Subject<TSource>();
-
                     var d = new CompositeDisposable(2);
                     _refCountDisposable = new RefCountDisposable(d);
 
-                    var window = new WindowObservable<TSource>(_window, _refCountDisposable);
-                    ForwardOnNext(window);
+                    NextWindow();
 
                     d.Add(parent._source.SubscribeSafe(this));
                     d.Add(parent._windowBoundaries.SubscribeSafe(new WindowClosingObserver(this)));
 
                     SetUpstream(_refCountDisposable);
+                }
+
+                private void NextWindow()
+                {
+                    var window = new WindowObservable<TSource>(_window, _refCountDisposable!); // NB: _refCountDisposable gets assigned in Run.
+                    ForwardOnNext(window);
                 }
 
                 private sealed class WindowClosingObserver : IObserver<TWindowClosing>
@@ -693,8 +712,7 @@ namespace System.Reactive.Linq.ObservableImpl
                             _parent._window.OnCompleted();
                             _parent._window = new Subject<TSource>();
 
-                            var window = new WindowObservable<TSource>(_parent._window, _parent._refCountDisposable);
-                            _parent.ForwardOnNext(window);
+                            _parent.NextWindow();
                         }
                     }
 

@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.ComponentModel;
@@ -18,11 +18,11 @@ namespace System.Reactive.Concurrency
         private readonly bool _postBackToOriginalContext;
 
         internal SchedulerOperation(Func<Action, IDisposable> schedule, CancellationToken cancellationToken)
-            : this(schedule, cancellationToken, false)
+            : this(schedule, false, cancellationToken)
         {
         }
 
-        internal SchedulerOperation(Func<Action, IDisposable> schedule, CancellationToken cancellationToken, bool postBackToOriginalContext)
+        internal SchedulerOperation(Func<Action, IDisposable> schedule, bool postBackToOriginalContext, CancellationToken cancellationToken)
         {
             _schedule = schedule;
             _cancellationToken = cancellationToken;
@@ -36,7 +36,7 @@ namespace System.Reactive.Concurrency
         /// <returns>Scheduler operation object with configured await behavior.</returns>
         public SchedulerOperation ConfigureAwait(bool continueOnCapturedContext)
         {
-            return new SchedulerOperation(_schedule, _cancellationToken, continueOnCapturedContext);
+            return new SchedulerOperation(_schedule, continueOnCapturedContext, _cancellationToken);
         }
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace System.Reactive.Concurrency
         /// <returns>Awaiter for the scheduler operation.</returns>
         public SchedulerOperationAwaiter GetAwaiter()
         {
-            return new SchedulerOperationAwaiter(_schedule, _cancellationToken, _postBackToOriginalContext);
+            return new SchedulerOperationAwaiter(_schedule, _postBackToOriginalContext, _cancellationToken);
         }
     }
 
@@ -60,7 +60,7 @@ namespace System.Reactive.Concurrency
         private readonly bool _postBackToOriginalContext;
         private readonly CancellationTokenRegistration _ctr;
 
-        internal SchedulerOperationAwaiter(Func<Action, IDisposable> schedule, CancellationToken cancellationToken, bool postBackToOriginalContext)
+        internal SchedulerOperationAwaiter(Func<Action, IDisposable> schedule, bool postBackToOriginalContext, CancellationToken cancellationToken)
         {
             _schedule = schedule;
             _cancellationToken = cancellationToken;
@@ -68,7 +68,7 @@ namespace System.Reactive.Concurrency
 
             if (cancellationToken.CanBeCanceled)
             {
-                _ctr = _cancellationToken.Register(@this => ((SchedulerOperationAwaiter)@this).Cancel(), this);
+                _ctr = _cancellationToken.Register(static @this => ((SchedulerOperationAwaiter)@this!).Cancel(), this);
             }
         }
 
@@ -120,7 +120,7 @@ namespace System.Reactive.Concurrency
                         // is a conscious design decision as the performance impact was non
                         // negligible and our schedulers abstract over more constructs.
                         //
-                        ctx.Post(a => ((Action)a)(), original);
+                        ctx.Post(static a => ((Action)a!)(), original);
                     };
                 }
             }
@@ -139,8 +139,8 @@ namespace System.Reactive.Concurrency
             _work = _schedule(_continuation);
         }
 
-        private volatile Action _continuation;
-        private volatile IDisposable _work;
+        private volatile Action? _continuation;
+        private volatile IDisposable? _work;
 
         private void Cancel()
         {

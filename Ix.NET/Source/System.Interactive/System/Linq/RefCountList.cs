@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -7,17 +7,11 @@ using System.Diagnostics;
 
 namespace System.Linq
 {
-    internal sealed class RefCountList<T> : IRefCountList<T>
+    internal sealed class RefCountList<T>(int readerCount) : IRefCountList<T>
     {
-        private readonly IDictionary<int, RefCount> _list;
+        private readonly IDictionary<int, RefCount> _list = new Dictionary<int, RefCount>();
 
-        public RefCountList(int readerCount)
-        {
-            ReaderCount = readerCount;
-            _list = new Dictionary<int, RefCount>();
-        }
-
-        public int ReaderCount { get; set; }
+        public int ReaderCount { get; set; } = readerCount;
 
         public void Clear() => _list.Clear();
 
@@ -45,7 +39,7 @@ namespace System.Linq
 
         public void Add(T item)
         {
-            _list[Count] = new RefCount { Value = item, Count = ReaderCount };
+            _list[Count] = new RefCount(item, ReaderCount);
 
             Count++;
         }
@@ -62,8 +56,14 @@ namespace System.Linq
 
         private sealed class RefCount
         {
-            public int Count;
-            public T Value;
+            public RefCount(T value, int count)
+            {
+                Value = value;
+                Count = count;
+            }
+
+            public int Count { get; set; }
+            public T Value { get; }
         }
     }
 }

@@ -1,10 +1,12 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information.
 
 using System.IO;
 using System.Text;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+using Assert = Xunit.Assert;
 
 namespace Tests.System.Reactive.Tests
 {
@@ -12,17 +14,19 @@ namespace Tests.System.Reactive.Tests
     /// Verify that main classes and unit tests have a license header
     /// in the source files.
     /// </summary>
+    [TestClass]
     public class LicenseHeaderTest
     {
         private static readonly bool FixHeaders = true;
-        private static readonly string[] Lines = {
+        private static readonly string[] Lines =
+        [
             "// Licensed to the .NET Foundation under one or more agreements.",
-            "// The .NET Foundation licenses this file to you under the Apache 2.0 License.",
+            "// The .NET Foundation licenses this file to you under the MIT License.",
             "// See the LICENSE file in the project root for more information.",
             ""
-        };
+        ];
 
-        [Fact]
+        [TestMethod]
         public void ScanFiles()
         {
             var dir = Directory.GetCurrentDirectory();
@@ -38,7 +42,7 @@ namespace Tests.System.Reactive.Tests
 
             if (error.Length != 0)
             {
-                Assert.False(true, $"Files with no license header: {count}\r\n{error.ToString()}");
+                Assert.False(true, $"Files with no license header: {count}\r\n{error}");
             }
         }
 
@@ -53,7 +57,7 @@ namespace Tests.System.Reactive.Tests
                     || file.Contains("AssemblyInfo.cs")
                     || file.Contains(".Designer.cs")
                     || file.Contains(".Generated.cs")
-                    || file.Contains(".approved.cs")
+                    || file.Contains(".verified.cs")
                     || file.Contains("Uwp.DeviceRunner")
                 )
                 {

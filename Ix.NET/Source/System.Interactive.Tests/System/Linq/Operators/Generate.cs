@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -22,7 +22,7 @@ namespace Tests
         public void Generate1()
         {
             var res = EnumerableEx.Generate(0, x => x < 5, x => x + 1, x => x * x).ToList();
-            Assert.True(Enumerable.SequenceEqual(res, new[] { 0, 1, 4, 9, 16 }));
+            Assert.True(Enumerable.SequenceEqual(res, [0, 1, 4, 9, 16]));
         }
     }
 }

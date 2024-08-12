@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Disposables;
@@ -18,7 +18,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _observableFactory = observableFactory;
         }
 
-        protected override _ CreateSink(IObserver<TSource> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<TSource> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(this);
 
@@ -29,11 +29,11 @@ namespace System.Reactive.Linq.ObservableImpl
             {
             }
 
-            private IDisposable _disposable;
+            private SingleAssignmentDisposableValue _disposable;
 
             public void Run(Using<TSource, TResource> parent)
             {
-                var source = default(IObservable<TSource>);
+                IObservable<TSource> source;
                 var disposable = Disposable.Empty;
                 try
                 {
@@ -43,7 +43,16 @@ namespace System.Reactive.Linq.ObservableImpl
                         disposable = resource;
                     }
 
-                    source = parent._observableFactory(resource);
+                    //
+                    // NB: We do allow the factory to return `null`, similar to the `using` statement in C#. However, we don't want to bother
+                    //     users with a TResource? parameter and cause a breaking change to their code, even if their factory returns non-null.
+                    //     Right now, we can't track non-null state across the invocation of resourceFactory into observableFactory. If we'd
+                    //     be able to do that, it would make sense to warn users about a possible null. In the absence of this, we'd end up
+                    //     with a lot of false positives (in fact, most code would cause a warning), and force users to pollute their code with
+                    //     the "damn-it" ! operator.
+                    //
+
+                    source = parent._observableFactory(resource!);
                 }
                 catch (Exception exception)
                 {
@@ -54,7 +63,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 // Run(). In the synchronous case this would else dispose
                 // the the resource before the source subscription.
                 Run(source);
-                Disposable.SetSingle(ref _disposable, disposable);
+                _disposable.Disposable = disposable;
             }
 
             protected override void Dispose(bool disposing)
@@ -63,7 +72,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 if (disposing)
                 {
-                    Disposable.TryDispose(ref _disposable);
+                    _disposable.Dispose();
                 }
             }
         }

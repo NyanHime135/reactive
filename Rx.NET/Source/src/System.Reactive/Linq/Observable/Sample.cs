@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -18,41 +18,42 @@ namespace System.Reactive.Linq.ObservableImpl
             _sampler = sampler;
         }
 
-        protected override _ CreateSink(IObserver<TSource> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<TSource> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(this);
 
         internal sealed class _ : IdentitySink<TSource>
         {
-            private readonly object _gate = new object();
+            private readonly object _gate = new();
 
             public _(IObserver<TSource> observer)
                 : base(observer)
             {
             }
 
-            private IDisposable _sourceDisposable;
-            private IDisposable _samplerDisposable;
+            private SingleAssignmentDisposableValue _sourceDisposable;
+            private SingleAssignmentDisposableValue _samplerDisposable;
 
             private bool _hasValue;
-            private TSource _value;
+            private TSource? _value;
             private bool _sourceAtEnd;
             private bool _samplerAtEnd;
 
             public void Run(Sample<TSource, TSample> parent)
             {
-                Disposable.SetSingle(ref _sourceDisposable, parent._source.SubscribeSafe(this));
+                _sourceDisposable.Disposable = parent._source.SubscribeSafe(this);
 
-                Disposable.SetSingle(ref _samplerDisposable, parent._sampler.SubscribeSafe(new SampleObserver(this)));
+                _samplerDisposable.Disposable = parent._sampler.SubscribeSafe(new SampleObserver(this));
             }
 
             protected override void Dispose(bool disposing)
             {
                 if (disposing)
                 {
-                    Disposable.TryDispose(ref _sourceDisposable);
-                    Disposable.TryDispose(ref _samplerDisposable);
+                    _sourceDisposable.Dispose();
+                    _samplerDisposable.Dispose();
                 }
+
                 base.Dispose(disposing);
             }
 
@@ -85,7 +86,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     }
                     else
                     {
-                        Disposable.TryDispose(ref _sourceDisposable);
+                        _sourceDisposable.Dispose();
                     }
                 }
             }
@@ -106,7 +107,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         if (_parent._hasValue)
                         {
                             _parent._hasValue = false;
-                            _parent.ForwardOnNext(_parent._value);
+                            _parent.ForwardOnNext(_parent._value!);
                         }
 
                         if (_parent._sourceAtEnd)
@@ -134,7 +135,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         if (_parent._hasValue)
                         {
                             _parent._hasValue = false;
-                            _parent.ForwardOnNext(_parent._value);
+                            _parent.ForwardOnNext(_parent._value!);
                         }
 
                         if (_parent._sourceAtEnd)
@@ -143,7 +144,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         }
                         else
                         {
-                            Disposable.TryDispose(ref _parent._samplerDisposable);
+                            _parent._samplerDisposable.Dispose();
                         }
                     }
                 }
@@ -164,28 +165,28 @@ namespace System.Reactive.Linq.ObservableImpl
             _scheduler = scheduler;
         }
 
-        protected override _ CreateSink(IObserver<TSource> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<TSource> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(this);
 
         internal sealed class _ : IdentitySink<TSource>
         {
-            private readonly object _gate = new object();
+            private readonly object _gate = new();
 
             public _(IObserver<TSource> observer)
                 : base(observer)
             {
             }
 
-            private IDisposable _sourceDisposable;
+            private SingleAssignmentDisposableValue _sourceDisposable;
 
             private bool _hasValue;
-            private TSource _value;
+            private TSource? _value;
             private bool _atEnd;
 
             public void Run(Sample<TSource> parent)
             {
-                Disposable.SetSingle(ref _sourceDisposable, parent._source.SubscribeSafe(this));
+                _sourceDisposable.Disposable = parent._source.SubscribeSafe(this);
 
                 SetUpstream(parent._scheduler.SchedulePeriodic(parent._interval, Tick));
             }
@@ -194,8 +195,9 @@ namespace System.Reactive.Linq.ObservableImpl
             {
                 if (disposing)
                 {
-                    Disposable.TryDispose(ref _sourceDisposable);
+                    _sourceDisposable.Dispose();
                 }
+
                 base.Dispose(disposing);
             }
 
@@ -206,7 +208,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     if (_hasValue)
                     {
                         _hasValue = false;
-                        ForwardOnNext(_value);
+                        ForwardOnNext(_value!);
                     }
 
                     if (_atEnd)
@@ -238,7 +240,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 lock (_gate)
                 {
                     _atEnd = true;
-                    Disposable.TryDispose(ref _sourceDisposable);
+                    _sourceDisposable.Dispose();
                 }
             }
         }

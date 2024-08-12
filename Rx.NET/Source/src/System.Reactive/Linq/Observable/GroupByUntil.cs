@@ -1,10 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Subjects;
 
@@ -29,15 +27,15 @@ namespace System.Reactive.Linq.ObservableImpl
             _comparer = comparer;
         }
 
-        protected override _ CreateSink(IObserver<IGroupedObservable<TKey, TElement>> observer) => new _(this, observer);
+        protected override _ CreateSink(IObserver<IGroupedObservable<TKey, TElement>> observer) => new(this, observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
         internal sealed class _ : Sink<TSource, IGroupedObservable<TKey, TElement>>
         {
-            private readonly object _gate = new object();
-            private readonly object _nullGate = new object();
-            private readonly CompositeDisposable _groupDisposable = new CompositeDisposable();
+            private readonly object _gate = new();
+            private readonly object _nullGate = new();
+            private readonly CompositeDisposable _groupDisposable = [];
             private readonly RefCountDisposable _refCountDisposable;
             private readonly Map<TKey, ISubject<TElement>> _map;
 
@@ -45,7 +43,7 @@ namespace System.Reactive.Linq.ObservableImpl
             private readonly Func<TSource, TElement> _elementSelector;
             private readonly Func<IGroupedObservable<TKey, TElement>, IObservable<TDuration>> _durationSelector;
 
-            private ISubject<TElement> _null;
+            private ISubject<TElement>? _null;
 
             public _(GroupByUntil<TSource, TKey, TElement, TDuration> parent, IObserver<IGroupedObservable<TKey, TElement>> observer)
                 : base(observer)
@@ -74,7 +72,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
             public override void OnNext(TSource value)
             {
-                var key = default(TKey);
+                TKey key;
                 try
                 {
                     key = _keySelector(value);
@@ -86,7 +84,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 }
 
                 var fireNewMapEntry = false;
-                var writer = default(ISubject<TElement>);
+                ISubject<TElement> writer;
                 try
                 {
                     //
@@ -125,9 +123,9 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     var group = new GroupedObservable<TKey, TElement>(key, writer, _refCountDisposable);
 
-                    var duration = default(IObservable<TDuration>);
-
                     var durationGroup = new GroupedObservable<TKey, TElement>(key, writer);
+
+                    IObservable<TDuration> duration;
                     try
                     {
                         duration = _durationSelector(durationGroup);
@@ -148,7 +146,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     durationObserver.SetResource(duration.SubscribeSafe(durationObserver));
                 }
 
-                var element = default(TElement);
+                TElement element;
                 try
                 {
                     element = _elementSelector(value);
@@ -208,14 +206,15 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (_key == null)
                     {
-                        var @null = default(ISubject<TElement>);
+                        ISubject<TElement>? @null;
+
                         lock (_parent._nullGate)
                         {
                             @null = _parent._null;
                             _parent._null = null;
                         }
 
-                        @null.OnCompleted();
+                        @null?.OnCompleted();
                     }
                     else
                     {
@@ -241,7 +240,8 @@ namespace System.Reactive.Linq.ObservableImpl
                 //       using Subject<T>. It will transition into a terminal state, making one
                 //       of the two calls a no-op by swapping in a DoneObserver<T>.
                 //
-                var @null = default(ISubject<TElement>);
+                ISubject<TElement>? @null;
+                
                 lock (_nullGate)
                 {
                     @null = _null;
@@ -267,7 +267,8 @@ namespace System.Reactive.Linq.ObservableImpl
                 //       using Subject<T>. It will transition into a terminal state, making one
                 //       of the two calls a no-op by swapping in a DoneObserver<T>.
                 //
-                var @null = default(ISubject<TElement>);
+                ISubject<TElement>? @null;
+
                 lock (_nullGate)
                 {
                     @null = _null;
@@ -285,72 +286,6 @@ namespace System.Reactive.Linq.ObservableImpl
                     ForwardOnError(exception);
                 }
             }
-        }
-    }
-
-    internal sealed class Map<TKey, TValue>
-    {
-        // Taken from ConcurrentDictionary in the BCL.
-
-        // The default concurrency level is DEFAULT_CONCURRENCY_MULTIPLIER * #CPUs. The higher the
-        // DEFAULT_CONCURRENCY_MULTIPLIER, the more concurrent writes can take place without interference
-        // and blocking, but also the more expensive operations that require all locks become (e.g. table
-        // resizing, ToArray, Count, etc). According to brief benchmarks that we ran, 4 seems like a good
-        // compromise.
-        private const int DefaultConcurrencyMultiplier = 4;
-
-        private static int DefaultConcurrencyLevel => DefaultConcurrencyMultiplier * Environment.ProcessorCount;
-
-        private readonly ConcurrentDictionary<TKey, TValue> _map;
-
-        public Map(int? capacity, IEqualityComparer<TKey> comparer)
-        {
-            if (capacity.HasValue)
-            {
-                _map = new ConcurrentDictionary<TKey, TValue>(DefaultConcurrencyLevel, capacity.Value, comparer);
-            }
-            else
-            {
-                _map = new ConcurrentDictionary<TKey, TValue>(comparer);
-            }
-        }
-
-        public TValue GetOrAdd(TKey key, Func<TValue> valueFactory, out bool added)
-        {
-            added = false;
-
-            var value = default(TValue);
-            var newValue = default(TValue);
-            var hasNewValue = false;
-            while (true)
-            {
-                if (_map.TryGetValue(key, out value))
-                {
-                    break;
-                }
-
-                if (!hasNewValue)
-                {
-                    newValue = valueFactory();
-                    hasNewValue = true;
-                }
-
-                if (_map.TryAdd(key, newValue))
-                {
-                    added = true;
-                    value = newValue;
-                    break;
-                }
-            }
-
-            return value;
-        }
-
-        public IEnumerable<TValue> Values => _map.Values.ToArray();
-
-        public bool Remove(TKey key)
-        {
-            return _map.TryRemove(key, out _);
         }
     }
 }

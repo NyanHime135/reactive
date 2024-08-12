@@ -1,8 +1,9 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace System.Reactive.Linq
 {
@@ -110,9 +111,7 @@ namespace System.Reactive.Linq
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         /// <exception cref="InvalidOperationException">The source sequence is empty.</exception>
         /// <seealso cref="Observable.FirstAsync{TSource}(IObservable{TSource})"/>
-#if PREFER_ASYNC
         [Obsolete(Constants_Linq.UseAsync)]
-#endif
         public static TSource First<TSource>(this IObservable<TSource> source)
         {
             if (source == null)
@@ -133,9 +132,7 @@ namespace System.Reactive.Linq
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="predicate"/> is null.</exception>
         /// <exception cref="InvalidOperationException">No element satisfies the condition in the predicate. -or- The source sequence is empty.</exception>
         /// <seealso cref="Observable.FirstAsync{TSource}(IObservable{TSource}, Func{TSource, bool})"/>
-#if PREFER_ASYNC
         [Obsolete(Constants_Linq.UseAsync)]
-#endif
         public static TSource First<TSource>(this IObservable<TSource> source, Func<TSource, bool> predicate)
         {
             if (source == null)
@@ -163,9 +160,8 @@ namespace System.Reactive.Linq
         /// <returns>The first element in the observable sequence, or a default value if no such element exists.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         /// <seealso cref="Observable.FirstOrDefaultAsync{TSource}(IObservable{TSource})"/>
-#if PREFER_ASYNC
         [Obsolete(Constants_Linq.UseAsync)]
-#endif
+        [return: MaybeNull]
         public static TSource FirstOrDefault<TSource>(this IObservable<TSource> source)
         {
             if (source == null)
@@ -185,9 +181,8 @@ namespace System.Reactive.Linq
         /// <returns>The first element in the observable sequence that satisfies the condition in the predicate, or a default value if no such element exists.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="predicate"/> is null.</exception>
         /// <seealso cref="Observable.FirstOrDefaultAsync{TSource}(IObservable{TSource}, Func{TSource, bool})"/>
-#if PREFER_ASYNC
         [Obsolete(Constants_Linq.UseAsync)]
-#endif
+        [return: MaybeNull]
         public static TSource FirstOrDefault<TSource>(this IObservable<TSource> source, Func<TSource, bool> predicate)
         {
             if (source == null)
@@ -215,9 +210,7 @@ namespace System.Reactive.Linq
         /// <param name="onNext">Action to invoke for each element in the observable sequence.</param>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="onNext"/> is null.</exception>
         /// <remarks>Because of its blocking nature, this operator is mainly used for testing.</remarks>
-#if PREFER_ASYNC
         [Obsolete(Constants_Linq.UseAsync)]
-#endif
         public static void ForEach<TSource>(this IObservable<TSource> source, Action<TSource> onNext)
         {
             if (source == null)
@@ -241,9 +234,7 @@ namespace System.Reactive.Linq
         /// <param name="onNext">Action to invoke for each element in the observable sequence.</param>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="onNext"/> is null.</exception>
         /// <remarks>Because of its blocking nature, this operator is mainly used for testing.</remarks>
-#if PREFER_ASYNC
         [Obsolete(Constants_Linq.UseAsync)]
-#endif
         public static void ForEach<TSource>(this IObservable<TSource> source, Action<TSource, int> onNext)
         {
             if (source == null)
@@ -293,9 +284,7 @@ namespace System.Reactive.Linq
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         /// <exception cref="InvalidOperationException">The source sequence is empty.</exception>
         /// <seealso cref="Observable.LastAsync{TSource}(IObservable{TSource})"/>
-#if PREFER_ASYNC
         [Obsolete(Constants_Linq.UseAsync)]
-#endif
         public static TSource Last<TSource>(this IObservable<TSource> source)
         {
             if (source == null)
@@ -316,9 +305,7 @@ namespace System.Reactive.Linq
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="predicate"/> is null.</exception>
         /// <exception cref="InvalidOperationException">No element satisfies the condition in the predicate. -or- The source sequence is empty.</exception>
         /// <seealso cref="Observable.LastAsync{TSource}(IObservable{TSource}, Func{TSource, bool})"/>
-#if PREFER_ASYNC
         [Obsolete(Constants_Linq.UseAsync)]
-#endif
         public static TSource Last<TSource>(this IObservable<TSource> source, Func<TSource, bool> predicate)
         {
             if (source == null)
@@ -346,9 +333,8 @@ namespace System.Reactive.Linq
         /// <returns>The last element in the observable sequence, or a default value if no such element exists.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         /// <seealso cref="Observable.LastOrDefaultAsync{TSource}(IObservable{TSource})"/>
-#if PREFER_ASYNC
         [Obsolete(Constants_Linq.UseAsync)]
-#endif
+        [return: MaybeNull]
         public static TSource LastOrDefault<TSource>(this IObservable<TSource> source)
         {
             if (source == null)
@@ -368,9 +354,8 @@ namespace System.Reactive.Linq
         /// <returns>The last element in the observable sequence that satisfies the condition in the predicate, or a default value if no such element exists.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="predicate"/> is null.</exception>
         /// <seealso cref="Observable.LastOrDefaultAsync{TSource}(IObservable{TSource}, Func{TSource, bool})"/>
-#if PREFER_ASYNC
         [Obsolete(Constants_Linq.UseAsync)]
-#endif
+        [return: MaybeNull]
         public static TSource LastOrDefault<TSource>(this IObservable<TSource> source, Func<TSource, bool> predicate)
         {
             if (source == null)
@@ -465,10 +450,10 @@ namespace System.Reactive.Linq
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         /// <exception cref="InvalidOperationException">The source sequence contains more than one element. -or- The source sequence is empty.</exception>
         /// <seealso cref="Observable.SingleAsync{TSource}(IObservable{TSource})"/>
-#if PREFER_ASYNC
         [Obsolete(Constants_Linq.UseAsync)]
-#endif
+#pragma warning disable CA1720 // (Identifier contains type name.) Single is long-established as a LINQ method name.
         public static TSource Single<TSource>(this IObservable<TSource> source)
+#pragma warning restore CA1720
         {
             if (source == null)
             {
@@ -488,10 +473,10 @@ namespace System.Reactive.Linq
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="predicate"/> is null.</exception>
         /// <exception cref="InvalidOperationException">No element satisfies the condition in the predicate. -or- More than one element satisfies the condition in the predicate. -or- The source sequence is empty.</exception>
         /// <seealso cref="Observable.SingleAsync{TSource}(IObservable{TSource}, Func{TSource, bool})"/>
-#if PREFER_ASYNC
         [Obsolete(Constants_Linq.UseAsync)]
-#endif
+#pragma warning disable CA1720 // (Identifier contains type name.) Single is long-established as a LINQ method name.
         public static TSource Single<TSource>(this IObservable<TSource> source, Func<TSource, bool> predicate)
+#pragma warning restore CA1720
         {
             if (source == null)
             {
@@ -519,9 +504,8 @@ namespace System.Reactive.Linq
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         /// <exception cref="InvalidOperationException">The source sequence contains more than one element.</exception>
         /// <seealso cref="Observable.SingleOrDefaultAsync{TSource}(IObservable{TSource})"/>
-#if PREFER_ASYNC
         [Obsolete(Constants_Linq.UseAsync)]
-#endif
+        [return: MaybeNull]
         public static TSource SingleOrDefault<TSource>(this IObservable<TSource> source)
         {
             if (source == null)
@@ -542,9 +526,8 @@ namespace System.Reactive.Linq
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="predicate"/> is null.</exception>
         /// <exception cref="InvalidOperationException">The sequence contains more than one element that satisfies the condition in the predicate.</exception>
         /// <seealso cref="Observable.SingleOrDefaultAsync{TSource}(IObservable{TSource}, Func{TSource, bool})"/>
-#if PREFER_ASYNC
         [Obsolete(Constants_Linq.UseAsync)]
-#endif
+        [return: MaybeNull]
         public static TSource SingleOrDefault<TSource>(this IObservable<TSource> source, Func<TSource, bool> predicate)
         {
             if (source == null)

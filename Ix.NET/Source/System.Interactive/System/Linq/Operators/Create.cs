@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections;
@@ -43,13 +43,9 @@ namespace System.Linq
             }
         }
 
-        private sealed class AnonymousEnumerable<TResult> : IEnumerable<TResult>
+        private sealed class AnonymousEnumerable<TResult>(Func<IEnumerator<TResult>> getEnumerator) : IEnumerable<TResult>
         {
-            private readonly Func<IEnumerator<TResult>> _getEnumerator;
-
-            public AnonymousEnumerable(Func<IEnumerator<TResult>> getEnumerator) => _getEnumerator = getEnumerator;
-
-            public IEnumerator<TResult> GetEnumerator() => _getEnumerator();
+            public IEnumerator<TResult> GetEnumerator() => getEnumerator();
 
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }

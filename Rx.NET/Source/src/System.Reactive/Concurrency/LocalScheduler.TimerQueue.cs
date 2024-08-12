@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -14,26 +14,26 @@ namespace System.Reactive.Concurrency
         /// <summary>
         /// Gate to protect local scheduler queues.
         /// </summary>
-        private static readonly object Gate = new object();
+        private static readonly object Gate = new();
 
         /// <summary>
         /// Gate to protect queues and to synchronize scheduling decisions and system clock
         /// change management.
         /// </summary>
-        private static readonly object StaticGate = new object();
+        private static readonly object StaticGate = new();
 
         /// <summary>
         /// Long term work queue. Contains work that's due beyond SHORTTERM, computed at the
         /// time of enqueueing.
         /// </summary>
-        private static readonly PriorityQueue<WorkItem/*!*/> LongTerm = new PriorityQueue<WorkItem/*!*/>();
+        private static readonly PriorityQueue<WorkItem/*!*/> LongTerm = new();
 
         /// <summary>
         /// Disposable resource for the long term timer that will reevaluate and dispatch the
         /// first item in the long term queue. A serial disposable is used to make "dispose
         /// current and assign new" logic easier. The disposable itself is never disposed.
         /// </summary>
-        private static readonly SerialDisposable NextLongTermTimer = new SerialDisposable();
+        private static readonly SerialDisposable NextLongTermTimer = new();
 
         /// <summary>
         /// Item at the head of the long term queue for which the current long term timer is
@@ -41,7 +41,7 @@ namespace System.Reactive.Concurrency
         /// or can continue using the current timer (because no earlier long term work was
         /// added to the queue).
         /// </summary>
-        private static WorkItem _nextLongTermWorkItem;
+        private static WorkItem? _nextLongTermWorkItem;
 
         /// <summary>
         /// Short term work queue. Contains work that's due soon, computed at the time of
@@ -49,13 +49,13 @@ namespace System.Reactive.Concurrency
         /// items. This queue is kept in order to be able to relocate short term items back
         /// to the long term queue in case a system clock change occurs.
         /// </summary>
-        private readonly PriorityQueue<WorkItem/*!*/> _shortTerm = new PriorityQueue<WorkItem/*!*/>();
+        private readonly PriorityQueue<WorkItem/*!*/> _shortTerm = new();
 
         /// <summary>
         /// Set of disposable handles to all of the current short term work Schedule calls,
         /// allowing those to be cancelled upon a system clock change.
         /// </summary>
-        private readonly HashSet<IDisposable> _shortTermWork = new HashSet<IDisposable>();
+        private readonly HashSet<IDisposable> _shortTermWork = [];
 
         /// <summary>
         /// Threshold where an item is considered to be short term work or gets moved from
@@ -104,7 +104,6 @@ namespace System.Reactive.Concurrency
         /// <summary>
         /// Creates a new local scheduler.
         /// </summary>
-        [Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1810:InitializeReferenceTypeStaticFieldsInline", Justification = "We can't really lift this into a field initializer, and would end up checking for an initialization flag in every static method anyway (which is roughly what the JIT does in a thread-safe manner).")]
         protected LocalScheduler()
         {
             //
@@ -195,7 +194,7 @@ namespace System.Reactive.Concurrency
                 // (though it should).
                 //
                 var dueTime = Scheduler.Normalize(item.DueTime - item.Scheduler.Now);
-                d.Disposable = item.Scheduler.Schedule((@this: this, d), dueTime, (self, tuple) => tuple.@this.ExecuteNextShortTermWorkItem(self, tuple.d));
+                d.Disposable = item.Scheduler.Schedule((@this: this, d), dueTime, static (self, tuple) => tuple.@this.ExecuteNextShortTermWorkItem(self, tuple.d));
             }
         }
 
@@ -207,7 +206,7 @@ namespace System.Reactive.Concurrency
         /// <returns>Empty disposable. Recursive work cancellation is wired through the original WorkItem.</returns>
         private IDisposable ExecuteNextShortTermWorkItem(IScheduler scheduler, IDisposable cancel)
         {
-            var next = default(WorkItem);
+            WorkItem? next = null;
 
             lock (Gate)
             {
@@ -333,7 +332,7 @@ namespace System.Reactive.Concurrency
                 var dueCapped = TimeSpan.FromTicks(Math.Min(dueEarly.Ticks, MaxSupportedTimer.Ticks));
 
                 _nextLongTermWorkItem = next;
-                NextLongTermTimer.Disposable = ConcurrencyAbstractionLayer.Current.StartTimer(_ => EvaluateLongTermQueue(), null, dueCapped);
+                NextLongTermTimer.Disposable = ConcurrencyAbstractionLayer.Current.StartTimer(static _ => EvaluateLongTermQueue(), null, dueCapped);
             }
         }
 
@@ -370,7 +369,7 @@ namespace System.Reactive.Concurrency
         /// </summary>
         /// <param name="args">Currently not used.</param>
         /// <param name="sender">Currently not used.</param>
-        internal virtual void SystemClockChanged(object sender, SystemClockChangedEventArgs args)
+        internal virtual void SystemClockChanged(object? sender, SystemClockChangedEventArgs args)
         {
             lock (StaticGate)
             {
@@ -422,7 +421,7 @@ namespace System.Reactive.Concurrency
             public readonly LocalScheduler Scheduler;
             public readonly DateTimeOffset DueTime;
 
-            private IDisposable _disposable;
+            private SingleAssignmentDisposableValue _disposable;
             private int _hasRun;
 
             protected WorkItem(LocalScheduler scheduler, DateTimeOffset dueTime)
@@ -445,9 +444,9 @@ namespace System.Reactive.Concurrency
                 {
                     try
                     {
-                        if (!Disposable.GetIsDisposed(ref _disposable))
+                        if (!_disposable.IsDisposed)
                         {
-                            Disposable.SetSingle(ref _disposable, InvokeCore(scheduler));
+                            _disposable.Disposable = InvokeCore(scheduler);
                         }
                     }
                     finally
@@ -459,9 +458,9 @@ namespace System.Reactive.Concurrency
 
             protected abstract IDisposable InvokeCore(IScheduler scheduler);
 
-            public int CompareTo(WorkItem/*!*/ other) => Comparer<DateTimeOffset>.Default.Compare(DueTime, other.DueTime);
+            public int CompareTo(WorkItem? other) => DueTime.CompareTo(other!.DueTime);
 
-            public void Dispose() => Disposable.TryDispose(ref _disposable);
+            public void Dispose() => _disposable.Dispose();
         }
 
         /// <summary>

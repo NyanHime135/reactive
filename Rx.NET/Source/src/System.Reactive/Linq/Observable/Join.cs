@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -24,16 +24,16 @@ namespace System.Reactive.Linq.ObservableImpl
             _resultSelector = resultSelector;
         }
 
-        protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+        protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
         protected override void Run(_ sink) => sink.Run(this);
 
         internal sealed class _ : IdentitySink<TResult>
         {
-            private readonly object _gate = new object();
-            private readonly CompositeDisposable _group = new CompositeDisposable();
-            private readonly SortedDictionary<int, TLeft> _leftMap = new SortedDictionary<int, TLeft>();
-            private readonly SortedDictionary<int, TRight> _rightMap = new SortedDictionary<int, TRight>();
+            private readonly object _gate = new();
+            private readonly CompositeDisposable _group = [];
+            private readonly SortedDictionary<int, TLeft> _leftMap = [];
+            private readonly SortedDictionary<int, TRight> _rightMap = [];
 
             private readonly Func<TLeft, IObservable<TLeftDuration>> _leftDurationSelector;
             private readonly Func<TRight, IObservable<TRightDuration>> _rightDurationSelector;
@@ -91,8 +91,9 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TLeft value)
                 {
-                    var id = 0;
-                    var rightID = 0;
+                    int id;
+                    int rightID;
+
                     lock (_parent._gate)
                     {
                         id = _parent._leftID++;
@@ -101,7 +102,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     }
 
 
-                    var duration = default(IObservable<TLeftDuration>);
+                    IObservable<TLeftDuration> duration;
                     try
                     {
                         duration = _parent._leftDurationSelector(value);
@@ -123,7 +124,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         {
                             if (rightValue.Key < rightID)
                             {
-                                var result = default(TResult);
+                                TResult result;
                                 try
                                 {
                                     result = _parent._resultSelector(value, rightValue.Value);
@@ -216,8 +217,9 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TRight value)
                 {
-                    var id = 0;
-                    var leftID = 0;
+                    int id;
+                    int leftID;
+
                     lock (_parent._gate)
                     {
                         id = _parent._rightID++;
@@ -225,7 +227,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         _parent._rightMap.Add(id, value);
                     }
 
-                    var duration = default(IObservable<TRightDuration>);
+                    IObservable<TRightDuration> duration;
                     try
                     {
                         duration = _parent._rightDurationSelector(value);
@@ -246,7 +248,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         {
                             if (leftValue.Key < leftID)
                             {
-                                var result = default(TResult);
+                                TResult result;
                                 try
                                 {
                                     result = _parent._resultSelector(leftValue.Value, value);

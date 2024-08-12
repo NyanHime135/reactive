@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -11,10 +11,11 @@ namespace System.Reactive.Concurrency
     /// Abstract base class for scheduled work items.
     /// </summary>
     /// <typeparam name="TAbsolute">Absolute time representation type.</typeparam>
+#pragma warning disable CA1033, CA1063, CA1816 // (Overridable IDisposable.) This is a specialized base type, and it would be inappropriate to encourage anyone to build derived types that do more in Dispose.
     public abstract class ScheduledItem<TAbsolute> : IScheduledItem<TAbsolute>, IComparable<ScheduledItem<TAbsolute>>, IDisposable
         where TAbsolute : IComparable<TAbsolute>
     {
-        private IDisposable _disposable;
+        private SingleAssignmentDisposableValue _disposable;
         private readonly IComparer<TAbsolute> _comparer;
 
         /// <summary>
@@ -39,9 +40,9 @@ namespace System.Reactive.Concurrency
         /// </summary>
         public void Invoke()
         {
-            if (!Disposable.GetIsDisposed(ref _disposable))
+            if (!_disposable.IsDisposed)
             {
-                Disposable.SetSingle(ref _disposable, InvokeCore());
+                _disposable.Disposable = InvokeCore();
             }
         }
 
@@ -59,7 +60,7 @@ namespace System.Reactive.Concurrency
         /// <param name="other">Work item to compare the current work item to.</param>
         /// <returns>Relative ordering between this and the specified work item.</returns>
         /// <remarks>The inequality operators are overloaded to provide results consistent with the <see cref="IComparable"/> implementation. Equality operators implement traditional reference equality semantics.</remarks>
-        public int CompareTo(ScheduledItem<TAbsolute> other)
+        public int CompareTo(ScheduledItem<TAbsolute>? other)
         {
             // MSDN: By definition, any object compares greater than null, and two null references compare equal to each other.
             if (other is null)
@@ -117,7 +118,7 @@ namespace System.Reactive.Concurrency
         /// <param name="right">The second object to compare.</param>
         /// <returns><c>true</c> if both <see cref="ScheduledItem{TAbsolute, TValue}" /> are equal; otherwise, <c>false</c>.</returns>
         /// <remarks>This operator does not provide results consistent with the IComparable implementation. Instead, it implements reference equality.</remarks>
-        public static bool operator ==(ScheduledItem<TAbsolute> left, ScheduledItem<TAbsolute> right) => ReferenceEquals(left, right);
+        public static bool operator ==(ScheduledItem<TAbsolute>? left, ScheduledItem<TAbsolute>? right) => ReferenceEquals(left, right);
 
         /// <summary>
         /// Determines whether two specified <see cref="ScheduledItem{TAbsolute, TValue}" /> objects are inequal.
@@ -126,14 +127,14 @@ namespace System.Reactive.Concurrency
         /// <param name="right">The second object to compare.</param>
         /// <returns><c>true</c> if both <see cref="ScheduledItem{TAbsolute, TValue}" /> are inequal; otherwise, <c>false</c>.</returns>
         /// <remarks>This operator does not provide results consistent with the IComparable implementation. Instead, it implements reference equality.</remarks>
-        public static bool operator !=(ScheduledItem<TAbsolute> left, ScheduledItem<TAbsolute> right) => !(left == right);
+        public static bool operator !=(ScheduledItem<TAbsolute>? left, ScheduledItem<TAbsolute>? right) => !(left == right);
 
         /// <summary>
         /// Determines whether a <see cref="ScheduledItem{TAbsolute}" /> object is equal to the specified object.
         /// </summary>
         /// <param name="obj">The object to compare to the current <see cref="ScheduledItem{TAbsolute}" /> object.</param>
         /// <returns><c>true</c> if the obj parameter is a <see cref="ScheduledItem{TAbsolute}" /> object and is equal to the current <see cref="ScheduledItem{TAbsolute}" /> object; otherwise, <c>false</c>.</returns>
-        public override bool Equals(object obj) => ReferenceEquals(this, obj);
+        public override bool Equals(object? obj) => ReferenceEquals(this, obj);
 
         /// <summary>
         /// Returns the hash code for the current <see cref="ScheduledItem{TAbsolute}" /> object.
@@ -146,18 +147,16 @@ namespace System.Reactive.Concurrency
         /// <summary>
         /// Cancels the work item by disposing the resource returned by <see cref="InvokeCore"/> as soon as possible.
         /// </summary>
-        public void Cancel() => Disposable.TryDispose(ref _disposable);
+        public void Cancel() => _disposable.Dispose();
 
         /// <summary>
         /// Gets whether the work item has received a cancellation request.
         /// </summary>
-        public bool IsCanceled => Disposable.GetIsDisposed(ref _disposable);
+        public bool IsCanceled => _disposable.IsDisposed;
 
-        void IDisposable.Dispose()
-        {
-            Cancel();
-        }
+        void IDisposable.Dispose() => Cancel();
     }
+#pragma warning restore CA1033, CA1063, CA1816
 
     /// <summary>
     /// Represents a scheduled work item based on the materialization of an IScheduler.Schedule method call.

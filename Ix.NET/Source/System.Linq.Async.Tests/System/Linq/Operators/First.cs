@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -29,14 +29,14 @@ namespace Tests
         [Fact]
         public async Task FirstAsync_NoParam_Empty_Enumerable()
         {
-            var res = new int[0].Select(x => x).ToAsyncEnumerable().FirstAsync();
+            var res = Array.Empty<int>().Select(x => x).ToAsyncEnumerable().FirstAsync();
             await AssertThrowsAsync<InvalidOperationException>(res.AsTask());
         }
 
         [Fact]
         public async Task FirstAsync_NoParam_Empty_IList()
         {
-            var res = new int[0].ToAsyncEnumerable().FirstAsync();
+            var res = Array.Empty<int>().ToAsyncEnumerable().FirstAsync();
             await AssertThrowsAsync<InvalidOperationException>(res.AsTask());
         }
 

@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Disposables;
@@ -15,20 +15,20 @@ namespace System.Reactive.Linq.ObservableImpl
             _sources = sources;
         }
 
-        protected override _ CreateSink(IObserver<TSource> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<TSource> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_sources);
 
         internal sealed class _ : Sink<IObservable<TSource>, TSource>
         {
-            private readonly object _gate = new object();
+            private readonly object _gate = new();
 
             public _(IObserver<TSource> observer)
                 : base(observer)
             {
             }
 
-            private IDisposable _innerSerialDisposable;
+            private SerialDisposableValue _innerSerialDisposable;
             private bool _isStopped;
             private ulong _latest;
             private bool _hasLatest;
@@ -37,7 +37,7 @@ namespace System.Reactive.Linq.ObservableImpl
             {
                 if (disposing)
                 {
-                    Disposable.TryDispose(ref _innerSerialDisposable);
+                    _innerSerialDisposable.Dispose();
                 }
 
                 base.Dispose(disposing);
@@ -45,7 +45,8 @@ namespace System.Reactive.Linq.ObservableImpl
 
             public override void OnNext(IObservable<TSource> value)
             {
-                var id = default(ulong);
+                ulong id;
+                
                 lock (_gate)
                 {
                     id = unchecked(++_latest);
@@ -54,7 +55,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 var innerObserver = new InnerObserver(this, id);
 
-                Disposable.TrySetSerial(ref _innerSerialDisposable, innerObserver);
+                _innerSerialDisposable.Disposable = innerObserver;
                 innerObserver.SetResource(value.SubscribeSafe(innerObserver));
             }
 

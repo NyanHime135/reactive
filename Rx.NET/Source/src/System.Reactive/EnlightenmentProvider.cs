@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 namespace System.Reactive.PlatformServices
@@ -23,9 +23,7 @@ namespace System.Reactive.PlatformServices
         /// </returns>
         public static bool EnsureLoaded()
         {
-#pragma warning disable CS0618
             return PlatformEnlightenmentProvider.Current is CurrentPlatformEnlightenmentProvider;
-#pragma warning restore CS0618
         }
     }
 }

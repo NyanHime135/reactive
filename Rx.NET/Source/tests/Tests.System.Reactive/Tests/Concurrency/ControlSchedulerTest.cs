@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 #if HAS_WINFORMS
@@ -10,35 +10,39 @@ using System.Reactive.Disposables;
 using System.Diagnostics;
 using System.Threading;
 using System.Windows.Forms;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Reactive.Testing;
+
+using Assert = Xunit.Assert;
 
 namespace ReactiveTests.Tests
 {
-    
+    [TestClass]
     public class ControlSchedulerTest
     {
-        [Fact]
+        [TestMethod]
         public void Ctor_ArgumentChecking()
         {
+#pragma warning disable CA1806 // (Unused new instance.) We expect the constructor to throw.
             ReactiveAssert.Throws<ArgumentNullException>(() => new ControlScheduler(null));
+#pragma warning restore CA1806
         }
 
-        [Fact]
+        [TestMethod]
         public void Control()
         {
             var lbl = new Label();
             Assert.Same(lbl, new ControlScheduler(lbl).Control);
         }
 
-        [Fact]
+        [TestMethod]
         public void Now()
         {
             var res = new ControlScheduler(new Label()).Now - DateTime.Now;
             Assert.True(res.Seconds < 1);
         }
 
-        [Fact]
+        [TestMethod]
         public void Schedule_ArgumentChecking()
         {
             var s = new ControlScheduler(new Label());
@@ -47,49 +51,56 @@ namespace ReactiveTests.Tests
             ReactiveAssert.Throws<ArgumentNullException>(() => s.Schedule(42, DateTimeOffset.Now, default(Func<IScheduler, int, IDisposable>)));
         }
 
-        [Fact(Skip="Run Locally")]
+        [TestMethod]
         public void Schedule()
         {
-            var evt = new ManualResetEvent(false);
+            using (WinFormsTestUtils.RunTest(out var lbl))
+            {
+                var evt = new ManualResetEvent(false);
 
-            var id = Thread.CurrentThread.ManagedThreadId;
+                var id = Environment.CurrentManagedThreadId;
 
-            var lbl = CreateLabel();
-            var sch = new ControlScheduler(lbl);
-            
-            sch.Schedule(() => { lbl.Text = "Okay"; Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId); });
-            sch.Schedule(() => { Assert.Equal("Okay", lbl.Text); Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId); evt.Set(); });
+                var sch = new ControlScheduler(lbl);
+                
+                sch.Schedule(() => { lbl.Text = "Okay"; Assert.NotEqual(id, Environment.CurrentManagedThreadId); });
+                sch.Schedule(() => { Assert.Equal("Okay", lbl.Text); Assert.NotEqual(id, Environment.CurrentManagedThreadId); evt.Set(); });
 
-            evt.WaitOne();
-            Application.Exit();
+                evt.WaitOne();
+            }
         }
 
-        [Fact(Skip="Run Locally")]
+        [TestMethod]
         public void ScheduleError()
         {
-            var evt = new ManualResetEvent(false);
+            using (WinFormsTestUtils.RunTest(out var lbl))
+            {
+                var evt = new ManualResetEvent(false);
 
-            var ex = new Exception();
+                var ex = new Exception();
 
-            var lbl = CreateLabelWithHandler(e => {
-                Assert.Same(ex, e);
-                evt.Set();
-            });
+                lbl.Invoke(new Action(() =>
+                {
+                    Application.ThreadException += (o, e) =>
+                    {
+                        Assert.Same(ex, e.Exception);
+                        evt.Set();
+                    };
+                }));
 
-            var sch = new ControlScheduler(lbl);
-            sch.Schedule(() => { throw ex; });
+                var sch = new ControlScheduler(lbl);
+                sch.Schedule(() => { throw ex; });
 
-            evt.WaitOne();
-            Application.Exit();
+                evt.WaitOne();
+            }
         }
 
-        [Fact(Skip="Run Locally")]
+        [TestMethod]
         public void ScheduleRelative()
         {
             ScheduleRelative_(TimeSpan.FromSeconds(0.1));
         }
 
-        [Fact(Skip="Run Locally")]
+        [TestMethod]
         public void ScheduleRelative_Zero()
         {
             ScheduleRelative_(TimeSpan.Zero);
@@ -97,167 +108,128 @@ namespace ReactiveTests.Tests
 
         private void ScheduleRelative_(TimeSpan delay)
         {
-            var evt = new ManualResetEvent(false);
-
-            var id = Thread.CurrentThread.ManagedThreadId;
-            
-            var lbl = CreateLabel();
-            var sch = new ControlScheduler(lbl);
-
-            sch.Schedule(delay, () =>
+            using (WinFormsTestUtils.RunTest(out var lbl))
             {
-                lbl.Text = "Okay";
-                Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
+                var evt = new ManualResetEvent(false);
+
+                var id = Environment.CurrentManagedThreadId;
                 
-                sch.Schedule(() =>
-                {
-                    Assert.Equal("Okay", lbl.Text);
-                    Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
-                    evt.Set();
-                });
-            });
+                var sch = new ControlScheduler(lbl);
 
-            evt.WaitOne();
-            Application.Exit();
-        }
-
-        [Fact(Skip="Run Locally")]
-        public void ScheduleRelative_Nested()
-        {
-            var evt = new ManualResetEvent(false);
-
-            var id = Thread.CurrentThread.ManagedThreadId;
-
-            var lbl = CreateLabel();
-            var sch = new ControlScheduler(lbl);
-
-            sch.Schedule(TimeSpan.FromSeconds(0.1), () =>
-            {
-                sch.Schedule(TimeSpan.FromSeconds(0.1), () =>
+                sch.Schedule(delay, () =>
                 {
                     lbl.Text = "Okay";
-                    Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
-
+                    Assert.NotEqual(id, Environment.CurrentManagedThreadId);
+                    
                     sch.Schedule(() =>
                     {
                         Assert.Equal("Okay", lbl.Text);
-                        Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
+                        Assert.NotEqual(id, Environment.CurrentManagedThreadId);
                         evt.Set();
                     });
                 });
-            });
 
-            evt.WaitOne();
-            Application.Exit();
+                evt.WaitOne();
+            }
         }
 
-        [Fact(Skip="Run Locally")]
+        [TestMethod]
+        public void ScheduleRelative_Nested()
+        {
+            using (WinFormsTestUtils.RunTest(out var lbl))
+            {
+                var evt = new ManualResetEvent(false);
+
+                var id = Environment.CurrentManagedThreadId;
+
+                var sch = new ControlScheduler(lbl);
+
+                sch.Schedule(TimeSpan.FromSeconds(0.1), () =>
+                {
+                    sch.Schedule(TimeSpan.FromSeconds(0.1), () =>
+                    {
+                        lbl.Text = "Okay";
+                        Assert.NotEqual(id, Environment.CurrentManagedThreadId);
+
+                        sch.Schedule(() =>
+                        {
+                            Assert.Equal("Okay", lbl.Text);
+                            Assert.NotEqual(id, Environment.CurrentManagedThreadId);
+                            evt.Set();
+                        });
+                    });
+                });
+
+                evt.WaitOne();
+            }
+        }
+
+        [TestMethod]
         public void ScheduleRelative_Cancel()
         {
-            var evt = new ManualResetEvent(false);
-
-            var id = Thread.CurrentThread.ManagedThreadId;
-
-            var lbl = CreateLabel();
-            var sch = new ControlScheduler(lbl);
-
-            sch.Schedule(TimeSpan.FromSeconds(0.1), () =>
+            using (WinFormsTestUtils.RunTest(out var lbl))
             {
-                lbl.Text = "Okay";
-                Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
+                var evt = new ManualResetEvent(false);
 
-                var d = sch.Schedule(TimeSpan.FromSeconds(0.1), () =>
+                var id = Environment.CurrentManagedThreadId;
+
+                var sch = new ControlScheduler(lbl);
+
+                sch.Schedule(TimeSpan.FromSeconds(0.1), () =>
                 {
-                    lbl.Text = "Oops!";
+                    lbl.Text = "Okay";
+                    Assert.NotEqual(id, Environment.CurrentManagedThreadId);
+
+                    var d = sch.Schedule(TimeSpan.FromSeconds(0.1), () =>
+                    {
+                        lbl.Text = "Oops!";
+                    });
+
+                    sch.Schedule(() =>
+                    {
+                        d.Dispose();
+                    });
+
+                    sch.Schedule(TimeSpan.FromSeconds(0.2), () =>
+                    {
+                        Assert.Equal("Okay", lbl.Text);
+                        Assert.NotEqual(id, Environment.CurrentManagedThreadId);
+                        evt.Set();
+                    });
                 });
 
-                sch.Schedule(() =>
-                {
-                    d.Dispose();
-                });
-
-                sch.Schedule(TimeSpan.FromSeconds(0.2), () =>
-                {
-                    Assert.Equal("Okay", lbl.Text);
-                    Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
-                    evt.Set();
-                });
-            });
-
-            evt.WaitOne();
-            Application.Exit();
+                evt.WaitOne();
+            }
         }
 
-        [Fact]
+        [TestMethod]
         public void SchedulePeriodic_ArgumentChecking()
         {
             var s = new ControlScheduler(new Label());
+#pragma warning disable IDE0034 // (Simplify 'default'.) Want to be explicit about overload being tested.
             ReactiveAssert.Throws<ArgumentNullException>(() => s.SchedulePeriodic(42, TimeSpan.FromSeconds(1), default(Func<int, int>)));
+#pragma warning restore IDE0034
             ReactiveAssert.Throws<ArgumentOutOfRangeException>(() => s.SchedulePeriodic(42, TimeSpan.Zero, x => x));
             ReactiveAssert.Throws<ArgumentOutOfRangeException>(() => s.SchedulePeriodic(42, TimeSpan.FromMilliseconds(1).Subtract(TimeSpan.FromTicks(1)), x => x));
         }
 
-        [Fact(Skip="Run Locally")]
+        [TestMethod]
         public void SchedulePeriodic()
         {
-            var evt = new ManualResetEvent(false);
-
-            var id = Thread.CurrentThread.ManagedThreadId;
-
-            var lbl = CreateLabel();
-            var sch = new ControlScheduler(lbl);
-
-            var d = new SingleAssignmentDisposable();
-
-            d.Disposable = sch.SchedulePeriodic(1, TimeSpan.FromSeconds(0.1), n =>
+            using (WinFormsTestUtils.RunTest(out var lbl))
             {
-                lbl.Text = "Okay " + n;
-                Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
+                var evt = new ManualResetEvent(false);
 
-                if (n == 3)
-                {
-                    d.Dispose();
+                var id = Environment.CurrentManagedThreadId;
 
-                    sch.Schedule(TimeSpan.FromSeconds(0.2), () =>
-                    {
-                        Assert.Equal("Okay 3", lbl.Text);
-                        Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
-                        evt.Set();
-                    });
-                }
-
-                if (n > 3)
-                {
-                    Assert.True(false);
-                }
-
-                return n + 1;
-            });
-
-            evt.WaitOne();
-            Application.Exit();
-        }
-
-        [Fact(Skip="Run Locally")]
-        public void SchedulePeriodic_Nested()
-        {
-            var evt = new ManualResetEvent(false);
-
-            var id = Thread.CurrentThread.ManagedThreadId;
-
-            var lbl = CreateLabel();
-            var sch = new ControlScheduler(lbl);
-
-            sch.Schedule(() =>
-            {
-                lbl.Text = "Okay";
+                var sch = new ControlScheduler(lbl);
 
                 var d = new SingleAssignmentDisposable();
 
                 d.Disposable = sch.SchedulePeriodic(1, TimeSpan.FromSeconds(0.1), n =>
                 {
                     lbl.Text = "Okay " + n;
-                    Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
+                    Assert.NotEqual(id, Environment.CurrentManagedThreadId);
 
                     if (n == 3)
                     {
@@ -266,65 +238,63 @@ namespace ReactiveTests.Tests
                         sch.Schedule(TimeSpan.FromSeconds(0.2), () =>
                         {
                             Assert.Equal("Okay 3", lbl.Text);
-                            Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
+                            Assert.NotEqual(id, Environment.CurrentManagedThreadId);
                             evt.Set();
                         });
                     }
 
+                    if (n > 3)
+                    {
+                        Assert.True(false);
+                    }
+
                     return n + 1;
                 });
-            });
 
-            evt.WaitOne();
-            Application.Exit();
+                evt.WaitOne();
+            }
         }
 
-        private Label CreateLabel()
+        [TestMethod]
+        public void SchedulePeriodic_Nested()
         {
-            var loaded = new ManualResetEvent(false);
-            var lbl = default(Label);
-
-            var t = new Thread(() =>
+            using (WinFormsTestUtils.RunTest(out var lbl))
             {
-                lbl = new Label();
-                var frm = new Form { Controls = { lbl }, Width = 0, Height = 0, FormBorderStyle = FormBorderStyle.None, ShowInTaskbar = false };
-                frm.Load += (_, __) =>
+                var evt = new ManualResetEvent(false);
+
+                var id = Environment.CurrentManagedThreadId;
+
+                var sch = new ControlScheduler(lbl);
+
+                sch.Schedule(() =>
                 {
-                    loaded.Set();
-                };
-                Application.Run(frm);
-            });
-            t.SetApartmentState(ApartmentState.STA);
-            t.Start();
+                    lbl.Text = "Okay";
 
-            loaded.WaitOne();
-            return lbl;
-        }
+                    var d = new SingleAssignmentDisposable();
 
-        private Label CreateLabelWithHandler(Action<Exception> handler)
-        {
-            var loaded = new ManualResetEvent(false);
-            var lbl = default(Label);
+                    d.Disposable = sch.SchedulePeriodic(1, TimeSpan.FromSeconds(0.1), n =>
+                    {
+                        lbl.Text = "Okay " + n;
+                        Assert.NotEqual(id, Environment.CurrentManagedThreadId);
 
-            var t = new Thread(() =>
-            {
-                lbl = new Label();
-                var frm = new Form { Controls = { lbl }, Width = 0, Height = 0, FormBorderStyle = FormBorderStyle.None, ShowInTaskbar = false };
-                frm.Load += (_, __) =>
-                {
-                    loaded.Set();
-                };
-                Application.ThreadException += (o, e) =>
-                {
-                    handler(e.Exception);
-                };
-                Application.Run(frm);
-            });
-            t.SetApartmentState(ApartmentState.STA);
-            t.Start();
+                        if (n == 3)
+                        {
+                            d.Dispose();
 
-            loaded.WaitOne();
-            return lbl;
+                            sch.Schedule(TimeSpan.FromSeconds(0.2), () =>
+                            {
+                                Assert.Equal("Okay 3", lbl.Text);
+                                Assert.NotEqual(id, Environment.CurrentManagedThreadId);
+                                evt.Set();
+                            });
+                        }
+
+                        return n + 1;
+                    });
+                });
+
+                evt.WaitOne();
+            }
         }
     }
 }

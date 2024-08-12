@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -96,7 +96,7 @@ namespace System.Reactive.Linq
                 }
 
                 private readonly IDisposable _subscription;
-                private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+                private readonly CancellationTokenSource _cts = new();
 
                 public Subscription(Func<IObserver<TResult>, CancellationToken, Task> subscribeAsync, IObserver<TResult> observer)
                 {
@@ -141,7 +141,7 @@ namespace System.Reactive.Linq
                 private sealed class TaskDisposeCompletionObserver : IObserver<IDisposable>, IDisposable
                 {
                     private readonly IObserver<TResult> _observer;
-                    private IDisposable _disposable;
+                    private SingleAssignmentDisposableValue _disposable;
 
                     public TaskDisposeCompletionObserver(IObserver<TResult> observer)
                     {
@@ -150,7 +150,7 @@ namespace System.Reactive.Linq
 
                     public void Dispose()
                     {
-                        Disposable.TryDispose(ref _disposable);
+                        _disposable.Dispose();
                     }
 
                     public void OnCompleted()
@@ -164,12 +164,12 @@ namespace System.Reactive.Linq
 
                     public void OnNext(IDisposable value)
                     {
-                        Disposable.SetSingle(ref _disposable, value);
+                        _disposable.Disposable = value;
                     }
                 }
 
                 private readonly TaskDisposeCompletionObserver _observer;
-                private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+                private readonly CancellationTokenSource _cts = new();
 
                 public Subscription(Func<IObserver<TResult>, CancellationToken, Task<IDisposable>> subscribeAsync, IObserver<TResult> observer)
                 {
@@ -218,7 +218,7 @@ namespace System.Reactive.Linq
                 private sealed class TaskDisposeCompletionObserver : IObserver<Action>, IDisposable
                 {
                     private readonly IObserver<TResult> _observer;
-                    private Action _disposable;
+                    private Action? _disposable;
 
                     public TaskDisposeCompletionObserver(IObserver<TResult> observer)
                     {
@@ -249,7 +249,7 @@ namespace System.Reactive.Linq
                 }
 
                 private readonly TaskDisposeCompletionObserver _observer;
-                private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+                private readonly CancellationTokenSource _cts = new();
 
                 public Subscription(Func<IObserver<TResult>, CancellationToken, Task<Action>> subscribeAsync, IObserver<TResult> observer)
                 {
@@ -299,14 +299,14 @@ namespace System.Reactive.Linq
 
         #region + DeferAsync +
 
-        public virtual IObservable<TValue> Defer<TValue>(Func<Task<IObservable<TValue>>> observableFactoryAsync)
+        public virtual IObservable<TValue> Defer<TValue>(Func<Task<IObservable<TValue>>> observableFactoryAsync, bool ignoreExceptionsAfterUnsubscribe)
         {
-            return Defer(() => StartAsync(observableFactoryAsync).Merge());
+            return Defer(() => StartAsync(observableFactoryAsync, new TaskObservationOptions.Value(null, ignoreExceptionsAfterUnsubscribe)).Merge());
         }
 
-        public virtual IObservable<TValue> Defer<TValue>(Func<CancellationToken, Task<IObservable<TValue>>> observableFactoryAsync)
+        public virtual IObservable<TValue> Defer<TValue>(Func<CancellationToken, Task<IObservable<TValue>>> observableFactoryAsync, bool ignoreExceptionsAfterUnsubscribe)
         {
-            return Defer(() => StartAsync(observableFactoryAsync).Merge());
+            return Defer(() => StartAsync(observableFactoryAsync, new TaskObservationOptions.Value(null, ignoreExceptionsAfterUnsubscribe)).Merge());
         }
 
         #endregion
@@ -384,7 +384,7 @@ namespace System.Reactive.Linq
             return Repeat_(value, scheduler);
         }
 
-        private IObservable<TResult> Repeat_<TResult>(TResult value, IScheduler scheduler)
+        private static IObservable<TResult> Repeat_<TResult>(TResult value, IScheduler scheduler)
         {
             var longRunning = scheduler.AsLongRunning();
             if (longRunning != null)
@@ -404,7 +404,7 @@ namespace System.Reactive.Linq
             return Repeat_(value, repeatCount, scheduler);
         }
 
-        private IObservable<TResult> Repeat_<TResult>(TResult value, int repeatCount, IScheduler scheduler)
+        private static IObservable<TResult> Repeat_<TResult>(TResult value, int repeatCount, IScheduler scheduler)
         {
             var longRunning = scheduler.AsLongRunning();
             if (longRunning != null)

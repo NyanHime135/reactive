@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Disposables;
@@ -19,12 +19,15 @@ namespace System.Reactive.Linq.ObservableImpl
             _resultSelector = resultSelector;
         }
 
-        protected override _ CreateSink(IObserver<TResult> observer) => new _(_resultSelector, observer);
+        protected override _ CreateSink(IObserver<TResult> observer) => new(_resultSelector, observer);
 
         protected override void Run(_ sink) => sink.Run(_first, _second);
 
         internal sealed class _ : IdentitySink<TResult>
         {
+            private readonly object _gate = new();
+            private readonly object _latestGate = new();
+
             private readonly Func<TFirst, TSecond, TResult> _resultSelector;
 
             public _(Func<TFirst, TSecond, TResult> resultSelector, IObserver<TResult> observer)
@@ -33,23 +36,17 @@ namespace System.Reactive.Linq.ObservableImpl
                 _resultSelector = resultSelector;
             }
 
-            private object _gate;
             private volatile bool _hasLatest;
-            private TSecond _latest;
+            private TSecond? _latest;
 
-            private object _latestGate;
-
-            private IDisposable _secondDisposable;
+            private SingleAssignmentDisposableValue _secondDisposable;
 
             public void Run(IObservable<TFirst> first, IObservable<TSecond> second)
             {
-                _gate = new object();
-                _latestGate = new object();
-
                 var fstO = new FirstObserver(this);
                 var sndO = new SecondObserver(this);
 
-                Disposable.SetSingle(ref _secondDisposable, second.SubscribeSafe(sndO));
+                _secondDisposable.Disposable = second.SubscribeSafe(sndO);
                 SetUpstream(first.SubscribeSafe(fstO));
             }
 
@@ -57,8 +54,9 @@ namespace System.Reactive.Linq.ObservableImpl
             {
                 if (disposing)
                 {
-                    Disposable.TryDispose(ref _secondDisposable);
+                    _secondDisposable.Dispose();
                 }
+
                 base.Dispose(disposing);
             }
 
@@ -91,15 +89,14 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (_parent._hasLatest) // Volatile read
                     {
-
                         TSecond latest;
 
                         lock (_parent._latestGate)
                         {
-                            latest = _parent._latest;
+                            latest = _parent._latest!; // NB: Not null when hasLatest is true.
                         }
 
-                        var res = default(TResult);
+                        TResult res;
 
                         try
                         {
@@ -134,7 +131,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public void OnCompleted()
                 {
-                    Disposable.TryDispose(ref _parent._secondDisposable);
+                    _parent._secondDisposable.Dispose();
                 }
 
                 public void OnError(Exception error)

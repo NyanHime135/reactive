@@ -1,15 +1,20 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
-#pragma warning disable 1591
+#if HAS_TRIMMABILITY_ATTRIBUTES
+using System.Diagnostics.CodeAnalysis;
+#endif
 
 namespace System.Reactive.Linq
 {
+#if HAS_TRIMMABILITY_ATTRIBUTES
+    [RequiresUnreferencedCode(Constants_Core.AsQueryableTrimIncompatibilityMessage)]
+#endif
     public static partial class Qbservable
     {
 #pragma warning disable IDE1006 // Naming Styles: 3rd party code is known to reflect for this specific field name
-        private static IQbservableProvider s_provider;
+        private static IQbservableProvider? s_provider;
 #pragma warning restore IDE1006 // Naming Styles
 
         /// <summary>
@@ -19,10 +24,7 @@ namespace System.Reactive.Linq
         {
             get
             {
-                if (s_provider == null)
-                {
-                    s_provider = new ObservableQueryProvider();
-                }
+                s_provider ??= new ObservableQueryProvider();
 
                 return s_provider;
             }
@@ -46,5 +48,3 @@ namespace System.Reactive.Linq
         }
     }
 }
-
-#pragma warning restore 1591

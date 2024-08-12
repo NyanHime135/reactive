@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -40,7 +40,7 @@ namespace System.Reactive
         public IDisposable SubscribeRaw(IObserver<TSource> observer, bool enableSafeguard)
         {
             IDisposable run;
-            ISafeObserver<TSource> safeObserver = null;
+            ISafeObserver<TSource>? safeObserver = null;
 
             //
             // See AutoDetachObserver.cs for more information on the safeguarding requirement and
@@ -57,7 +57,7 @@ namespace System.Reactive
 
                 CurrentThreadScheduler.Instance.ScheduleAction(
                     (@this: this, runAssignable, observer),
-                    tuple => tuple.runAssignable.Disposable = tuple.@this.Run(tuple.observer));
+                    static tuple => tuple.runAssignable.Disposable = tuple.@this.Run(tuple.observer));
 
                 run = runAssignable;
             }
@@ -99,7 +99,7 @@ namespace System.Reactive
 
         public IDisposable SubscribeRaw(IObserver<TTarget> observer, bool enableSafeguard)
         {
-            ISafeObserver<TTarget> safeObserver = null;
+            ISafeObserver<TTarget>? safeObserver = null;
 
             //
             // See AutoDetachObserver.cs for more information on the safeguarding requirement and
@@ -118,7 +118,7 @@ namespace System.Reactive
             {
                 CurrentThreadScheduler.Instance.ScheduleAction(
                     (@this: this, sink),
-                    tuple => tuple.@this.Run(tuple.sink));
+                    static tuple => tuple.@this.Run(tuple.sink));
             }
             else
             {

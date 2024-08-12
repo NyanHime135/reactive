@@ -8,9 +8,7 @@
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reactive.Concurrency;
-#if !CRIPPLED_REFLECTION
 using System.Reflection;
-#endif
 
 namespace System.Reactive.Linq
 {
@@ -36,11 +34,7 @@ namespace System.Reactive.Linq
             return provider.CreateQuery<Unit>(
                 Expression.Call(
                     null,
-#if CRIPPLED_REFLECTION
-                    InfoOf(() => QbservableEx.Create(default(IQbservableProvider), default(Expression<Func<IEnumerable<IObservable<object>>>>))),
-#else
                     (MethodInfo)MethodInfo.GetCurrentMethod(),
-#endif
                     Expression.Constant(provider, typeof(IQbservableProvider)),
                     iteratorMethod
                 )
@@ -69,11 +63,7 @@ namespace System.Reactive.Linq
             return provider.CreateQuery<TResult>(
                 Expression.Call(
                     null,
-#if CRIPPLED_REFLECTION
-                    InfoOf(() => QbservableEx.Create<TResult>(default(IQbservableProvider), default(Expression<Func<IObserver<TResult>, IEnumerable<IObservable<object>>>>))),
-#else
                     ((MethodInfo)MethodInfo.GetCurrentMethod()).MakeGenericMethod(typeof(TResult)),
-#endif
                     Expression.Constant(provider, typeof(IQbservableProvider)),
                     iteratorMethod
                 )
@@ -102,11 +92,7 @@ namespace System.Reactive.Linq
             return source.Provider.CreateQuery<TSource>(
                 Expression.Call(
                     null,
-#if CRIPPLED_REFLECTION
-                    InfoOf(() => QbservableEx.Expand<TSource>(default(IQbservable<TSource>), default(Expression<Func<TSource, IObservable<TSource>>>))),
-#else
                     ((MethodInfo)MethodInfo.GetCurrentMethod()).MakeGenericMethod(typeof(TSource)),
-#endif
                     source.Expression,
                     selector
                 )
@@ -138,11 +124,7 @@ namespace System.Reactive.Linq
             return source.Provider.CreateQuery<TSource>(
                 Expression.Call(
                     null,
-#if CRIPPLED_REFLECTION
-                    InfoOf(() => QbservableEx.Expand<TSource>(default(IQbservable<TSource>), default(Expression<Func<TSource, IObservable<TSource>>>), default(IScheduler))),
-#else
                     ((MethodInfo)MethodInfo.GetCurrentMethod()).MakeGenericMethod(typeof(TSource)),
-#endif
                     source.Expression,
                     selector,
                     Expression.Constant(scheduler, typeof(IScheduler))
@@ -172,11 +154,7 @@ namespace System.Reactive.Linq
             return provider.CreateQuery<TSource[]>(
                 Expression.Call(
                     null,
-#if CRIPPLED_REFLECTION
-                    InfoOf(() => QbservableEx.ForkJoin<TSource>(default(IQbservableProvider), default(IObservable<TSource>[]))),
-#else
                     ((MethodInfo)MethodInfo.GetCurrentMethod()).MakeGenericMethod(typeof(TSource)),
-#endif
                     Expression.Constant(provider, typeof(IQbservableProvider)),
                     GetSourceExpression(sources)
                 )
@@ -205,11 +183,7 @@ namespace System.Reactive.Linq
             return provider.CreateQuery<TSource[]>(
                 Expression.Call(
                     null,
-#if CRIPPLED_REFLECTION
-                    InfoOf(() => QbservableEx.ForkJoin<TSource>(default(IQbservableProvider), default(IEnumerable<IObservable<TSource>>))),
-#else
                     ((MethodInfo)MethodInfo.GetCurrentMethod()).MakeGenericMethod(typeof(TSource)),
-#endif
                     Expression.Constant(provider, typeof(IQbservableProvider)),
                     GetSourceExpression(sources)
                 )
@@ -243,11 +217,7 @@ namespace System.Reactive.Linq
             return first.Provider.CreateQuery<TResult>(
                 Expression.Call(
                     null,
-#if CRIPPLED_REFLECTION
-                    InfoOf(() => QbservableEx.ForkJoin<TSource1, TSource2, TResult>(default(IQbservable<TSource1>), default(IObservable<TSource2>), default(Expression<Func<TSource1, TSource2, TResult>>))),
-#else
                     ((MethodInfo)MethodInfo.GetCurrentMethod()).MakeGenericMethod(typeof(TSource1), typeof(TSource2), typeof(TResult)),
-#endif
                     first.Expression,
                     GetSourceExpression(second),
                     resultSelector
@@ -279,11 +249,7 @@ namespace System.Reactive.Linq
             return source.Provider.CreateQuery<TResult>(
                 Expression.Call(
                     null,
-#if CRIPPLED_REFLECTION
-                    InfoOf(() => QbservableEx.Let<TSource, TResult>(default(IQbservable<TSource>), default(Expression<Func<IObservable<TSource>, IObservable<TResult>>>))),
-#else
                     ((MethodInfo)MethodInfo.GetCurrentMethod()).MakeGenericMethod(typeof(TSource), typeof(TResult)),
-#endif
                     source.Expression,
                     selector
                 )
@@ -306,11 +272,7 @@ namespace System.Reactive.Linq
             return source.Provider.CreateQuery<TResult>(
                 Expression.Call(
                     null,
-#if CRIPPLED_REFLECTION
-                    InfoOf(() => QbservableEx.ManySelect<TSource, TResult>(default(IQbservable<TSource>), default(Expression<Func<IObservable<TSource>, TResult>>))),
-#else
                     ((MethodInfo)MethodInfo.GetCurrentMethod()).MakeGenericMethod(typeof(TSource), typeof(TResult)),
-#endif
                     source.Expression,
                     selector
                 )
@@ -335,11 +297,7 @@ namespace System.Reactive.Linq
             return source.Provider.CreateQuery<TResult>(
                 Expression.Call(
                     null,
-#if CRIPPLED_REFLECTION
-                    InfoOf(() => QbservableEx.ManySelect<TSource, TResult>(default(IQbservable<TSource>), default(Expression<Func<IObservable<TSource>, TResult>>), default(IScheduler))),
-#else
                     ((MethodInfo)MethodInfo.GetCurrentMethod()).MakeGenericMethod(typeof(TSource), typeof(TResult)),
-#endif
                     source.Expression,
                     selector,
                     Expression.Constant(scheduler, typeof(IScheduler))
@@ -347,6 +305,58 @@ namespace System.Reactive.Linq
             );
         }
 #endif
+
+        /// <summary>
+        /// Merges two observable sequences into one observable sequence by combining each element from the first source with the latest element from the second source, if any.
+        /// </summary>
+        /// <typeparam name="TFirst">The type of the elements in the first source sequence.</typeparam>
+        /// <typeparam name="TSecond">The type of the elements in the second source sequence.</typeparam>
+        /// <param name="first">First observable source.</param>
+        /// <param name="second">Second observable source.</param>
+        /// <returns>An observable sequence containing the result of combining each element of the first source with the latest element from the second source, if any, as a tuple value.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="first"/> or <paramref name="second"/> is null.</exception>
+        public static IQbservable<(TFirst First, TSecond Second)> WithLatestFrom<TFirst, TSecond>(this IQbservable<TFirst> first, IObservable<TSecond> second)
+        {
+            if (first == null)
+                throw new ArgumentNullException(nameof(first));
+            if (second == null)
+                throw new ArgumentNullException(nameof(second));
+
+            return first.Provider.CreateQuery<(TFirst First, TSecond Second)>(
+                Expression.Call(
+                    null,
+                    ((MethodInfo)MethodInfo.GetCurrentMethod()).MakeGenericMethod(typeof(TFirst), typeof(TSecond)),
+                    first.Expression,
+                    GetSourceExpression(second)
+                )
+            );
+        }
+
+        /// <summary>
+        /// Merges an observable sequence and an enumerable sequence into one observable sequence of tuple values.
+        /// </summary>
+        /// <typeparam name="TFirst">The type of the elements in the first observable source sequence.</typeparam>
+        /// <typeparam name="TSecond">The type of the elements in the second enumerable source sequence.</typeparam>
+        /// <param name="first">First observable source.</param>
+        /// <param name="second">Second enumerable source.</param>
+        /// <returns>An observable sequence containing the result of pairwise combining the elements of the first and second source as a tuple value.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="first"/> or <paramref name="second"/> is null.</exception>
+        public static IQbservable<(TFirst First, TSecond Second)> Zip<TFirst, TSecond>(this IQbservable<TFirst> first, IEnumerable<TSecond> second)
+        {
+            if (first == null)
+                throw new ArgumentNullException(nameof(first));
+            if (second == null)
+                throw new ArgumentNullException(nameof(second));
+
+            return first.Provider.CreateQuery<(TFirst First, TSecond Second)>(
+                Expression.Call(
+                    null,
+                    ((MethodInfo)MethodInfo.GetCurrentMethod()).MakeGenericMethod(typeof(TFirst), typeof(TSecond)),
+                    first.Expression,
+                    GetSourceExpression(second)
+                )
+            );
+        }
 
     }
 }

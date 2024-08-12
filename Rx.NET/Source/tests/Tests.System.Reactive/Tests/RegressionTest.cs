@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -11,15 +11,16 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
 using Microsoft.Reactive.Testing;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+using Assert = Xunit.Assert;
 
 namespace ReactiveTests.Tests
 {
-
+    [TestClass]
     public class RegressionTest : ReactiveTest
     {
-#if NET45 || NET46
-        [Fact]
+        [TestMethod]
         public void Bug_ConcurrentMerge()
         {
             const int reps = 1000;
@@ -42,9 +43,8 @@ namespace ReactiveTests.Tests
 
             Assert.True(Enumerable.Range(0, reps).ToList().SequenceEqual(resultQueue.ToList()));
         }
-#endif
 
-        [Fact]
+        [TestMethod]
         public void Bug_1283()
         {
             var scheduler = new TestScheduler();
@@ -73,7 +73,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Bug_1261()
         {
             var scheduler = new TestScheduler();
@@ -105,15 +105,14 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Bug_1130()
         {
             var xs = Observable.Start(() => 5);
             Assert.Null(xs as ISubject<int, int>);
         }
 
-#if !NO_THREAD
-        [Fact]
+        [TestMethod]
         public void Bug_1286()
         {
             var infinite = Observable.Return(new { Name = "test", Value = 0d }, DefaultScheduler.Instance).Repeat();
@@ -127,9 +126,8 @@ namespace ReactiveTests.Tests
             //if the first doesn't this one always
             disp.Dispose();
         }
-#endif
 
-        [Fact]
+        [TestMethod]
         public void Bug_1287()
         {
             var flag = false;
@@ -138,7 +136,6 @@ namespace ReactiveTests.Tests
             Assert.True(flag);
         }
 
-#if !NO_THREAD
         private static IEnumerable<int> Bug_1333_Enumerable(AsyncSubject<IDisposable> s, Semaphore sema)
         {
             var d = s.First();
@@ -148,7 +145,7 @@ namespace ReactiveTests.Tests
             yield return 1;
         }
 
-        [Fact]
+        [TestMethod]
         //[Timeout(1000)]
         public void Bug_1333()
         {
@@ -159,9 +156,8 @@ namespace ReactiveTests.Tests
             d.OnCompleted();
             sema.WaitOne();
         }
-#endif
 
-        [Fact]
+        [TestMethod]
         public void Bug_1295_Completed()
         {
             var scheduler = new TestScheduler();
@@ -188,7 +184,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Bug_1295_Error()
         {
             var scheduler = new TestScheduler();
@@ -216,7 +212,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Bug_1297_Catch_None()
         {
             var scheduler = new TestScheduler();
@@ -230,7 +226,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Bug_1297_OnErrorResumeNext_None()
         {
             var scheduler = new TestScheduler();
@@ -244,7 +240,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Bug_1297_Catch_Single()
         {
             var scheduler = new TestScheduler();
@@ -262,7 +258,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Bug_1297_OnErrorResumeNext_Single()
         {
             var scheduler = new TestScheduler();
@@ -278,7 +274,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Bug_1297_Catch_Multi()
         {
             var scheduler = new TestScheduler();
@@ -300,7 +296,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Bug_1297_OnErrorResumeNext_Multi()
         {
             var scheduler = new TestScheduler();
@@ -322,7 +318,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Bug_1380()
         {
             var scheduler = new TestScheduler();
@@ -357,7 +353,7 @@ namespace ReactiveTests.Tests
         }
 
 
-        [Fact]
+        [TestMethod]
         public void Bug_1356()
         {
             var run = false;
@@ -365,7 +361,7 @@ namespace ReactiveTests.Tests
             Assert.True(run);
         }
 
-        [Fact]
+        [TestMethod]
         public void Bug_1381()
         {
             var scheduler = new TestScheduler();
@@ -411,7 +407,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Reentrant_Subject1()
         {
             var s = Subject.Synchronize((ISubject<int, int>)new Subject<int>(), Scheduler.Immediate);
@@ -434,7 +430,7 @@ namespace ReactiveTests.Tests
             list.AssertEqual(1, -1, 2, -2, 3, -3);
         }
 
-        [Fact]
+        [TestMethod]
         public void Reentrant_Subject2()
         {
             var s = Subject.Synchronize(new Subject<int>(), Scheduler.Immediate);
@@ -457,7 +453,7 @@ namespace ReactiveTests.Tests
             list.AssertEqual(1, -1, 2, -2, 3, -3);
         }
 
-        [Fact]
+        [TestMethod]
         public void Merge_Trampoline1()
         {
             var ys = new[] { 1, 2, 3 }.ToObservable().Publish(xs => xs.Merge(xs));
@@ -468,7 +464,7 @@ namespace ReactiveTests.Tests
             list.AssertEqual(1, 1, 2, 2, 3, 3);
         }
 
-        [Fact]
+        [TestMethod]
         public void Merge_Trampoline2()
         {
             var ys = new[] { 1, 2, 3 }.ToObservable().Publish(xs => Observable.Merge(xs, xs, xs, xs));

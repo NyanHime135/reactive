@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -20,7 +20,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _count = count;
             }
 
-            protected override _ CreateSink(IObserver<IList<TSource>> observer) => new _(_count, observer);
+            protected override _ CreateSink(IObserver<IList<TSource>> observer) => new(_count, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
@@ -39,6 +39,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 public override void OnNext(TSource value)
                 {
                     _queue.Enqueue(value);
+
                     if (_queue.Count > _count)
                     {
                         _queue.Dequeue();
@@ -48,6 +49,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 public override void OnCompleted()
                 {
                     var res = new List<TSource>(_queue.Count);
+
                     while (_queue.Count > 0)
                     {
                         res.Add(_queue.Dequeue());
@@ -72,7 +74,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _scheduler = scheduler;
             }
 
-            protected override _ CreateSink(IObserver<IList<TSource>> observer) => new _(_duration, observer);
+            protected override _ CreateSink(IObserver<IList<TSource>> observer) => new(_duration, observer);
 
             protected override void Run(_ sink) => sink.Run(_source, _scheduler);
 
@@ -88,7 +90,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     _queue = new Queue<Reactive.TimeInterval<TSource>>();
                 }
 
-                private IStopwatch _watch;
+                private IStopwatch? _watch;
 
                 public void Run(IObservable<TSource> source, IScheduler scheduler)
                 {
@@ -99,17 +101,20 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var now = _watch.Elapsed;
+                    var now = _watch!.Elapsed;
+
                     _queue.Enqueue(new Reactive.TimeInterval<TSource>(value, now));
+
                     Trim(now);
                 }
 
                 public override void OnCompleted()
                 {
-                    var now = _watch.Elapsed;
+                    var now = _watch!.Elapsed;
                     Trim(now);
 
                     var res = new List<TSource>(_queue.Count);
+
                     while (_queue.Count > 0)
                     {
                         res.Add(_queue.Dequeue().Value);

@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections;
@@ -27,7 +27,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _resultSelector = resultSelector;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(_resultSelector, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(_resultSelector, observer);
 
             protected override void Run(_ sink) => sink.Run(_first, _second);
 
@@ -38,10 +38,10 @@ namespace System.Reactive.Linq.ObservableImpl
                 private readonly object _gate;
 
                 private readonly FirstObserver _firstObserver;
-                private IDisposable _firstDisposable;
+                private SingleAssignmentDisposableValue _firstDisposable;
 
                 private readonly SecondObserver _secondObserver;
-                private IDisposable _secondDisposable;
+                private SingleAssignmentDisposableValue _secondDisposable;
 
                 public _(Func<TFirst, TSecond, TResult> resultSelector, IObserver<TResult> observer)
                     : base(observer)
@@ -51,24 +51,24 @@ namespace System.Reactive.Linq.ObservableImpl
                     _firstObserver = new FirstObserver(this);
                     _secondObserver = new SecondObserver(this);
 
-                    _firstObserver.Other = _secondObserver;
-                    _secondObserver.Other = _firstObserver;
+                    _firstObserver.SetOther(_secondObserver);
+                    _secondObserver.SetOther(_firstObserver);
 
                     _resultSelector = resultSelector;
                 }
 
                 public void Run(IObservable<TFirst> first, IObservable<TSecond> second)
                 {
-                    Disposable.SetSingle(ref _firstDisposable, first.SubscribeSafe(_firstObserver));
-                    Disposable.SetSingle(ref _secondDisposable, second.SubscribeSafe(_secondObserver));
+                    _firstDisposable.Disposable = first.SubscribeSafe(_firstObserver);
+                    _secondDisposable.Disposable = second.SubscribeSafe(_secondObserver);
                 }
 
                 protected override void Dispose(bool disposing)
                 {
                     if (disposing)
                     {
-                        Disposable.TryDispose(ref _firstDisposable);
-                        Disposable.TryDispose(ref _secondDisposable);
+                        _firstDisposable.Dispose();
+                        _secondDisposable.Dispose();
 
                         // clearing the queue should happen under the lock
                         // as they are plain Queue<T>s, not concurrent queues.
@@ -78,22 +78,24 @@ namespace System.Reactive.Linq.ObservableImpl
                             _secondObserver.Dispose();
                         }
                     }
+
                     base.Dispose(disposing);
                 }
 
                 private sealed class FirstObserver : IObserver<TFirst>, IDisposable
                 {
                     private readonly _ _parent;
-                    private SecondObserver _other;
                     private readonly Queue<TFirst> _queue;
+                    private SecondObserver _other;
 
                     public FirstObserver(_ parent)
                     {
                         _parent = parent;
                         _queue = new Queue<TFirst>();
+                        _other = default!; // NB: Will be set by SetOther.
                     }
 
-                    public SecondObserver Other { set { _other = value; } }
+                    public void SetOther(SecondObserver other) { _other = other; }
 
                     public Queue<TFirst> Queue => _queue;
                     public bool Done { get; private set; }
@@ -106,7 +108,7 @@ namespace System.Reactive.Linq.ObservableImpl
                             {
                                 var r = _other.Queue.Dequeue();
 
-                                var res = default(TResult);
+                                TResult res;
                                 try
                                 {
                                     res = _parent._resultSelector(value, r);
@@ -152,7 +154,7 @@ namespace System.Reactive.Linq.ObservableImpl
                             }
                             else
                             {
-                                Disposable.TryDispose(ref _parent._firstDisposable);
+                                _parent._firstDisposable.Dispose();
                             }
                         }
                     }
@@ -166,16 +168,17 @@ namespace System.Reactive.Linq.ObservableImpl
                 private sealed class SecondObserver : IObserver<TSecond>, IDisposable
                 {
                     private readonly _ _parent;
-                    private FirstObserver _other;
                     private readonly Queue<TSecond> _queue;
+                    private FirstObserver _other;
 
                     public SecondObserver(_ parent)
                     {
                         _parent = parent;
                         _queue = new Queue<TSecond>();
+                        _other = default!; // NB: Will be set by SetOther.
                     }
 
-                    public FirstObserver Other { set { _other = value; } }
+                    public void SetOther(FirstObserver other) { _other = other; }
 
                     public Queue<TSecond> Queue => _queue;
                     public bool Done { get; private set; }
@@ -188,7 +191,7 @@ namespace System.Reactive.Linq.ObservableImpl
                             {
                                 var l = _other.Queue.Dequeue();
 
-                                var res = default(TResult);
+                                TResult res;
                                 try
                                 {
                                     res = _parent._resultSelector(l, value);
@@ -234,7 +237,7 @@ namespace System.Reactive.Linq.ObservableImpl
                             }
                             else
                             {
-                                Disposable.TryDispose(ref _parent._secondDisposable);
+                                _parent._secondDisposable.Dispose();
                             }
                         }
                     }
@@ -260,7 +263,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _resultSelector = resultSelector;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(_resultSelector, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(_resultSelector, observer);
 
             protected override void Run(_ sink) => sink.Run(_first, _second);
 
@@ -274,7 +277,9 @@ namespace System.Reactive.Linq.ObservableImpl
                     _resultSelector = resultSelector;
                 }
 
-                private IEnumerator<TSecond> _rightEnumerator;
+                private int _enumerationInProgress;
+
+                private IEnumerator<TSecond>? _rightEnumerator;
 
                 private static readonly IEnumerator<TSecond> DisposedEnumerator = MakeDisposedEnumerator();
 
@@ -315,17 +320,52 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (disposing)
                     {
-                        Interlocked.Exchange(ref _rightEnumerator, DisposedEnumerator)?.Dispose();
+                        if (Interlocked.Increment(ref _enumerationInProgress) == 1)
+                        {
+                            Interlocked.Exchange(ref _rightEnumerator, DisposedEnumerator)?.Dispose();
+                        }
                     }
+
                     base.Dispose(disposing);
                 }
 
                 public override void OnNext(TFirst value)
                 {
-                    var hasNext = false;
+                    var currentEnumerator = Volatile.Read(ref _rightEnumerator);
+
+                    if (currentEnumerator == DisposedEnumerator)
+                    {
+                        return;
+                    }
+
+                    if (Interlocked.Increment(ref _enumerationInProgress) != 1)
+                    {
+                        return;
+                    }
+
+                    bool hasNext;
+                    TSecond? right = default;
+                    var wasDisposed = false;
+
                     try
                     {
-                        hasNext = _rightEnumerator.MoveNext();
+                        try
+                        {
+                            hasNext = currentEnumerator!.MoveNext();
+
+                            if (hasNext)
+                            {
+                                right = currentEnumerator.Current;
+                            }
+                        }
+                        finally
+                        {
+                            if (Interlocked.Decrement(ref _enumerationInProgress) != 0)
+                            {
+                                Interlocked.Exchange(ref _rightEnumerator, DisposedEnumerator)?.Dispose();
+                                wasDisposed = true;
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -333,23 +373,17 @@ namespace System.Reactive.Linq.ObservableImpl
                         return;
                     }
 
+                    if (wasDisposed)
+                    {
+                        return;
+                    }
+
                     if (hasNext)
                     {
-                        var right = default(TSecond);
-                        try
-                        {
-                            right = _rightEnumerator.Current;
-                        }
-                        catch (Exception ex)
-                        {
-                            ForwardOnError(ex);
-                            return;
-                        }
-
                         TResult result;
                         try
                         {
-                            result = _resultSelector(value, right);
+                            result = _resultSelector(value, right!); // NB: Not null when hasNext is true.
                         }
                         catch (Exception ex)
                         {
@@ -413,7 +447,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
             if (hasValueAll)
             {
-                var res = default(TResult);
+                TResult res;
                 try
                 {
                     res = GetResult();
@@ -551,7 +585,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _sources = sources;
         }
 
-        protected override _ CreateSink(IObserver<IList<TSource>> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<IList<TSource>> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_sources);
 
@@ -563,11 +597,15 @@ namespace System.Reactive.Linq.ObservableImpl
                 : base(observer)
             {
                 _gate = new object();
+
+                // NB: These will be set in Run before getting used.
+                _queues = null!;
+                _isDone = null!;
             }
 
             private Queue<TSource>[] _queues;
             private bool[] _isDone;
-            private IDisposable[] _subscriptions;
+            private SingleAssignmentDisposableValue[]? _subscriptions;
 
             public void Run(IEnumerable<IObservable<TSource>> sources)
             {
@@ -583,14 +621,14 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 _isDone = new bool[N];
 
-                var subscriptions = new IDisposable[N];
+                var subscriptions = new SingleAssignmentDisposableValue[N];
 
                 if (Interlocked.CompareExchange(ref _subscriptions, subscriptions, null) == null)
                 {
                     for (var i = 0; i < N; i++)
                     {
                         var o = new SourceObserver(this, i);
-                        Disposable.SetSingle(ref subscriptions[i], srcs[i].SubscribeSafe(o));
+                        subscriptions[i].Disposable = srcs[i].SubscribeSafe(o);
                     }
                 }
             }
@@ -599,12 +637,12 @@ namespace System.Reactive.Linq.ObservableImpl
             {
                 if (disposing)
                 {
-                    var subscriptions = Interlocked.Exchange(ref _subscriptions, Array.Empty<IDisposable>());
-                    if (subscriptions != null && subscriptions != Array.Empty<IDisposable>())
+                    var subscriptions = Interlocked.Exchange(ref _subscriptions, []);
+                    if (subscriptions != null && subscriptions != Array.Empty<SingleAssignmentDisposableValue>())
                     {
                         for (var i = 0; i < subscriptions.Length; i++)
                         {
-                            Disposable.TryDispose(ref subscriptions[i]);
+                            subscriptions[i].Dispose();
                         }
 
                         lock (_gate)
@@ -665,9 +703,9 @@ namespace System.Reactive.Linq.ObservableImpl
                     else
                     {
                         var subscriptions = Volatile.Read(ref _subscriptions);
-                        if (subscriptions != null && subscriptions != Array.Empty<IDisposable>())
+                        if (subscriptions != null && subscriptions != Array.Empty<SingleAssignmentDisposableValue>())
                         {
-                            Disposable.TryDispose(ref subscriptions[index]);
+                            subscriptions[index].Dispose();
                         }
                     }
                 }

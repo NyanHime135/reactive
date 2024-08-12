@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 namespace System.Reactive.Linq.ObservableImpl
@@ -7,7 +7,7 @@ namespace System.Reactive.Linq.ObservableImpl
     internal sealed class Synchronize<TSource> : Producer<TSource, Synchronize<TSource>._>
     {
         private readonly IObservable<TSource> _source;
-        private readonly object _gate;
+        private readonly object? _gate;
 
         public Synchronize(IObservable<TSource> source, object gate)
         {
@@ -20,7 +20,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _source = source;
         }
 
-        protected override _ CreateSink(IObserver<TSource> observer) => new _(_gate, observer);
+        protected override _ CreateSink(IObserver<TSource> observer) => new(_gate, observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
@@ -28,7 +28,7 @@ namespace System.Reactive.Linq.ObservableImpl
         {
             private readonly object _gate;
 
-            public _(object gate, IObserver<TSource> observer)
+            public _(object? gate, IObserver<TSource> observer)
                 : base(observer)
             {
                 _gate = gate ?? new object();

@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -40,7 +40,7 @@ namespace System.Reactive.Linq
 
         private static Task ForEachAsync_<TSource>(IObservable<TSource> source, Action<TSource> onNext, CancellationToken cancellationToken)
         {
-            var tcs = new TaskCompletionSource<object>();
+            var tcs = new TaskCompletionSource<object?>();
             var subscription = new SingleAssignmentDisposable();
 
             var ctr = default(CancellationTokenRegistration);
@@ -49,11 +49,7 @@ namespace System.Reactive.Linq
             {
                 ctr = cancellationToken.Register(() =>
                 {
-#if HAS_TPL46
                     tcs.TrySetCanceled(cancellationToken);
-#else
-                    tcs.TrySetCanceled();
-#endif
                     subscription.Dispose();
                 });
             }
@@ -132,16 +128,19 @@ namespace System.Reactive.Linq
         #region + Case +
 
         public virtual IObservable<TResult> Case<TValue, TResult>(Func<TValue> selector, IDictionary<TValue, IObservable<TResult>> sources)
+            where TValue : notnull
         {
             return Case(selector, sources, Empty<TResult>());
         }
 
         public virtual IObservable<TResult> Case<TValue, TResult>(Func<TValue> selector, IDictionary<TValue, IObservable<TResult>> sources, IScheduler scheduler)
+            where TValue : notnull
         {
             return Case(selector, sources, Empty<TResult>(scheduler));
         }
 
         public virtual IObservable<TResult> Case<TValue, TResult>(Func<TValue> selector, IDictionary<TValue, IObservable<TResult>> sources, IObservable<TResult> defaultSource)
+            where TValue : notnull
         {
             return new Case<TValue, TResult>(selector, sources, defaultSource);
         }

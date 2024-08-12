@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -27,7 +27,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _dueTime = dueTime;
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(observer);
 
             protected override void Run(_ sink) => sink.Run(_source, _scheduler, _dueTime);
         }
@@ -42,7 +42,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _dueTime = dueTime;
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(observer);
 
             protected override void Run(_ sink) => sink.Run(_source, _scheduler, _dueTime);
         }
@@ -56,12 +56,12 @@ namespace System.Reactive.Linq.ObservableImpl
 
             public void Run(IObservable<TSource> source, IScheduler scheduler, DateTimeOffset dueTime)
             {
-                SetUpstream(scheduler.ScheduleAction((@this: this, source), dueTime, tuple => tuple.source.SubscribeSafe(tuple.@this)));
+                SetUpstream(scheduler.ScheduleAction((@this: this, source), dueTime, static tuple => tuple.source.SubscribeSafe(tuple.@this)));
             }
 
             public void Run(IObservable<TSource> source, IScheduler scheduler, TimeSpan dueTime)
             {
-                SetUpstream(scheduler.ScheduleAction((@this: this, source), dueTime, tuple => tuple.source.SubscribeSafe(tuple.@this)));
+                SetUpstream(scheduler.ScheduleAction((@this: this, source), dueTime, static tuple => tuple.source.SubscribeSafe(tuple.@this)));
             }
         }
     }

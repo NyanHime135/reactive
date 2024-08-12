@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.ComponentModel;
@@ -19,9 +19,12 @@ namespace System.Reactive.Concurrency
 
         private static IConcurrencyAbstractionLayer Initialize()
         {
-#pragma warning disable CS0618 // Type or member is obsolete
-            return PlatformEnlightenmentProvider.Current.GetService<IConcurrencyAbstractionLayer>();
-#pragma warning restore CS0618 // Type or member is obsolete
+            //
+            // NB: For compat reasons, we allow null to leak here. Bad things will happen but we don't want
+            //     to trigger an exception earlier than we did before. The only case where this can happen
+            //     is when a custom PEP is installed, which is very rare (e.g. debugger, service hosting).
+            //
+            return PlatformEnlightenmentProvider.Current.GetService<IConcurrencyAbstractionLayer>()!;
         }
     }
 
@@ -42,7 +45,7 @@ namespace System.Reactive.Concurrency
         /// <param name="state">State to pass to the method.</param>
         /// <param name="dueTime">Time to execute the method on.</param>
         /// <returns>Disposable object that can be used to stop the timer.</returns>
-        IDisposable StartTimer(Action<object> action, object state, TimeSpan dueTime);
+        IDisposable StartTimer(Action<object?> action, object? state, TimeSpan dueTime);
 
         /// <summary>
         /// Queues a method for periodic execution based on the specified period.
@@ -58,7 +61,7 @@ namespace System.Reactive.Concurrency
         /// <param name="action">Method to execute.</param>
         /// <param name="state">State to pass to the method.</param>
         /// <returns>Disposable object that can be used to cancel the queued method.</returns>
-        IDisposable QueueUserWorkItem(Action<object> action, object state);
+        IDisposable QueueUserWorkItem(Action<object?> action, object? state);
 
         /// <summary>
         /// Blocking sleep operation.
@@ -82,6 +85,6 @@ namespace System.Reactive.Concurrency
         /// </summary>
         /// <param name="action">Method to execute.</param>
         /// <param name="state">State to pass to the method.</param>
-        void StartThread(Action<object> action, object state);
+        void StartThread(Action<object?> action, object? state);
     }
 }

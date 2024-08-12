@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 namespace System.Reactive.Concurrency
@@ -10,12 +10,13 @@ namespace System.Reactive.Concurrency
     //
     public static partial class Scheduler
     {
-        internal static Type[] Optimizations = {
+        internal static Type[] Optimizations =
+        [
             typeof(ISchedulerLongRunning),
             typeof(IStopwatchProvider),
             typeof(ISchedulerPeriodic)
             /* update this list if new interface-based optimizations are added */
-        };
+        ];
 
         /// <summary>
         /// Returns the <see cref="ISchedulerLongRunning"/> implementation of the specified scheduler, or <c>null</c> if no such implementation is available.
@@ -26,7 +27,7 @@ namespace System.Reactive.Concurrency
         /// This helper method is made available for query operator authors in order to discover scheduler services by using the required
         /// IServiceProvider pattern, which allows for interception or redefinition of scheduler services.
         /// </remarks>
-        public static ISchedulerLongRunning AsLongRunning(this IScheduler scheduler) => As<ISchedulerLongRunning>(scheduler);
+        public static ISchedulerLongRunning? AsLongRunning(this IScheduler scheduler) => As<ISchedulerLongRunning>(scheduler);
 
         /// <summary>
         /// Returns the <see cref="IStopwatchProvider"/> implementation of the specified scheduler, or <c>null</c> if no such implementation is available.
@@ -44,7 +45,7 @@ namespace System.Reactive.Concurrency
         /// scheduler service, where the caller falls back to not using stopwatches if this facility wasn't found.
         /// </para>
         /// </remarks>
-        public static IStopwatchProvider AsStopwatchProvider(this IScheduler scheduler) => As<IStopwatchProvider>(scheduler);
+        public static IStopwatchProvider? AsStopwatchProvider(this IScheduler scheduler) => As<IStopwatchProvider>(scheduler);
 
         /// <summary>
         /// Returns the <see cref="ISchedulerPeriodic"/> implementation of the specified scheduler, or <c>null</c> if no such implementation is available.
@@ -63,14 +64,14 @@ namespace System.Reactive.Concurrency
         /// facility wasn't found.
         /// </para>
         /// </remarks>
-        public static ISchedulerPeriodic AsPeriodic(this IScheduler scheduler) => As<ISchedulerPeriodic>(scheduler);
+        public static ISchedulerPeriodic? AsPeriodic(this IScheduler scheduler) => As<ISchedulerPeriodic>(scheduler);
 
-        private static T As<T>(IScheduler scheduler)
+        private static T? As<T>(IScheduler scheduler)
             where T : class
         {
             if (scheduler is IServiceProvider svc)
             {
-                return (T)svc.GetService(typeof(T));
+                return (T?)svc.GetService(typeof(T));
             }
 
             return null;

@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Disposables;
@@ -10,7 +10,7 @@ namespace System.Reactive.Linq
     internal sealed class GroupedObservable<TKey, TElement> : ObservableBase<TElement>, IGroupedObservable<TKey, TElement>
     {
         private readonly IObservable<TElement> _subject;
-        private readonly RefCountDisposable _refCount;
+        private readonly RefCountDisposable? _refCount;
 
         public GroupedObservable(TKey key, ISubject<TElement> subject, RefCountDisposable refCount)
         {

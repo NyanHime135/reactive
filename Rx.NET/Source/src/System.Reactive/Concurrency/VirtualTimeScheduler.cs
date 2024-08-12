@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -19,8 +19,13 @@ namespace System.Reactive.Concurrency
         /// Creates a new virtual time scheduler with the default value of TAbsolute as the initial clock value.
         /// </summary>
         protected VirtualTimeSchedulerBase()
-            : this(default, Comparer<TAbsolute>.Default)
+            : this(default!, Comparer<TAbsolute>.Default)
         {
+            //
+            // NB: We allow a default value for TAbsolute here, which typically is a struct. For compat reasons, we can't
+            //     add a generic constraint (either struct or, better, new()), and maybe a derived class has handled null
+            //     in all abstract methods.
+            //
         }
 
         /// <summary>
@@ -304,10 +309,9 @@ namespace System.Reactive.Concurrency
         /// Gets the next scheduled item to be executed.
         /// </summary>
         /// <returns>The next scheduled item.</returns>
-        [Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1024:UsePropertiesWhereAppropriate", Justification = "By design. Side-effecting operation to retrieve the next element.")]
-        protected abstract IScheduledItem<TAbsolute> GetNext();
+        protected abstract IScheduledItem<TAbsolute>? GetNext();
 
-        object IServiceProvider.GetService(Type serviceType) => GetService(serviceType);
+        object? IServiceProvider.GetService(Type serviceType) => GetService(serviceType);
 
         /// <summary>
         /// Discovers scheduler services by interface type. The base class implementation supports
@@ -316,7 +320,7 @@ namespace System.Reactive.Concurrency
         /// </summary>
         /// <param name="serviceType">Scheduler service interface type to discover.</param>
         /// <returns>Object implementing the requested service, if available; null otherwise.</returns>
-        protected virtual object GetService(Type serviceType)
+        protected virtual object? GetService(Type serviceType)
         {
             if (serviceType == typeof(IStopwatchProvider))
             {
@@ -332,20 +336,24 @@ namespace System.Reactive.Concurrency
         /// <returns>New stopwatch object; started at the time of the request.</returns>
         public IStopwatch StartStopwatch()
         {
-            var start = ToDateTimeOffset(Clock);
-            return new VirtualTimeStopwatch(() => ToDateTimeOffset(Clock) - start);
+            var start = ClockToDateTimeOffset();
+            return new VirtualTimeStopwatch(this, start);
         }
+
+        private DateTimeOffset ClockToDateTimeOffset() => ToDateTimeOffset(Clock);
 
         private sealed class VirtualTimeStopwatch : IStopwatch
         {
-            private readonly Func<TimeSpan> _getElapsed;
+            private readonly VirtualTimeSchedulerBase<TAbsolute, TRelative> _parent;
+            private readonly DateTimeOffset _start;
 
-            public VirtualTimeStopwatch(Func<TimeSpan> getElapsed)
+            public VirtualTimeStopwatch(VirtualTimeSchedulerBase<TAbsolute, TRelative> parent, DateTimeOffset start)
             {
-                _getElapsed = getElapsed;
+                _parent = parent;
+                _start = start;
             }
 
-            public TimeSpan Elapsed => _getElapsed();
+            public TimeSpan Elapsed => _parent.ClockToDateTimeOffset() - _start;
         }
     }
 
@@ -357,7 +365,7 @@ namespace System.Reactive.Concurrency
     public abstract class VirtualTimeScheduler<TAbsolute, TRelative> : VirtualTimeSchedulerBase<TAbsolute, TRelative>
         where TAbsolute : IComparable<TAbsolute>
     {
-        private readonly SchedulerQueue<TAbsolute> _queue = new SchedulerQueue<TAbsolute>();
+        private readonly SchedulerQueue<TAbsolute> _queue = new();
 
         /// <summary>
         /// Creates a new virtual time scheduler with the default value of TAbsolute as the initial clock value.
@@ -381,7 +389,7 @@ namespace System.Reactive.Concurrency
         /// Gets the next scheduled item to be executed.
         /// </summary>
         /// <returns>The next scheduled item.</returns>
-        protected override IScheduledItem<TAbsolute> GetNext()
+        protected override IScheduledItem<TAbsolute>? GetNext()
         {
             lock (_queue)
             {
@@ -418,13 +426,13 @@ namespace System.Reactive.Concurrency
                 throw new ArgumentNullException(nameof(action));
             }
 
-            var si = default(ScheduledItem<TAbsolute, TState>);
+            ScheduledItem<TAbsolute, TState>? si = null;
 
             var run = new Func<IScheduler, TState, IDisposable>((scheduler, state1) =>
             {
                 lock (_queue)
                 {
-                    _queue.Remove(si);
+                    _queue.Remove(si!); // NB: Assigned before function is invoked.
                 }
 
                 return action(scheduler, state1);

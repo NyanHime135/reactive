@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections;
@@ -14,12 +14,14 @@ namespace System.Linq.Internal
     /// Source: https://github.com/dotnet/corefx/blob/b90532bc97b07234a7d18073819d019645285f1c/src/System.Linq/src/System/Linq/Grouping.cs#L64
     internal class Grouping<TKey, TElement> : IGrouping<TKey, TElement>, IList<TElement>, IAsyncGrouping<TKey, TElement>
     {
+#pragma warning disable IDE1006 // Naming Styles
         internal int _count;
         internal TElement[] _elements;
         internal int _hashCode;
         internal Grouping<TKey, TElement> _hashNext;
         internal TKey _key;
         internal Grouping<TKey, TElement>? _next;
+#pragma warning restore IDE1006 // Naming Styles
 
         public Grouping(TKey key, int hashCode, TElement[] elements, Grouping<TKey, TElement> hashNext)
         {

@@ -1,8 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
-#if NET45
+#if HAS_WPF
 using System;
 using System.Diagnostics;
 using System.Reactive.Concurrency;
@@ -10,35 +10,41 @@ using System.Reactive.Disposables;
 using System.Threading;
 using System.Windows.Threading;
 using Microsoft.Reactive.Testing;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+using Assert = Xunit.Assert;
 
 namespace ReactiveTests.Tests
 {
-    
+    [TestClass]
     public class DispatcherSchedulerTest : TestBase
     {
-        [Fact]
+        [TestMethod]
         public void Ctor_ArgumentChecking()
         {
+#pragma warning disable CA1806 // (Unused new instance.) We expect the constructor to throw.
             ReactiveAssert.Throws<ArgumentNullException>(() => new DispatcherScheduler(null));
+#pragma warning restore CA1806
         }
 
-        [Fact]
+        [TestMethod]
         public void Current()
         {
-            var d = DispatcherHelpers.EnsureDispatcher();
-            var e = new ManualResetEvent(false);
-
-            d.BeginInvoke(() =>
+            using (DispatcherHelpers.RunTest(out var d))
             {
-                var c = DispatcherScheduler.Current;
-                c.Schedule(() => { e.Set(); });
-            });
+                var e = new ManualResetEvent(false);
 
-            e.WaitOne();
+                d.BeginInvoke(() =>
+                {
+                    var c = DispatcherScheduler.Current;
+                    c.Schedule(() => { e.Set(); });
+                });
+
+                e.WaitOne();
+            }
         }
 
-        [Fact]
+        [TestMethod]
         public void Current_None()
         {
             var e = default(Exception);
@@ -61,81 +67,88 @@ namespace ReactiveTests.Tests
             Assert.True(e != null && e is InvalidOperationException);
         }
 
-        [Fact]
+        [TestMethod]
         public void Dispatcher()
         {
-            var disp = DispatcherHelpers.EnsureDispatcher();
-            Assert.Same(disp.Dispatcher, new DispatcherScheduler(disp).Dispatcher);
+            using (DispatcherHelpers.RunTest(out var disp))
+            {
+                Assert.Same(disp.Dispatcher, new DispatcherScheduler(disp).Dispatcher);
+            }
         }
 
-        [Fact]
+        [TestMethod]
         public void Now()
         {
-            var disp = DispatcherHelpers.EnsureDispatcher();
-            var res = new DispatcherScheduler(disp).Now - DateTime.Now;
-            Assert.True(res.Seconds < 1);
+            using (DispatcherHelpers.RunTest(out var disp))
+            {
+                var res = new DispatcherScheduler(disp).Now - DateTime.Now;
+                Assert.True(res.Seconds < 1);
+            }
         }
 
-        [Fact]
+        [TestMethod]
         public void Schedule_ArgumentChecking()
         {
-            var disp = DispatcherHelpers.EnsureDispatcher();
-            var s = new DispatcherScheduler(disp);
-            ReactiveAssert.Throws<ArgumentNullException>(() => s.Schedule(42, default(Func<IScheduler, int, IDisposable>)));
-            ReactiveAssert.Throws<ArgumentNullException>(() => s.Schedule(42, TimeSpan.FromSeconds(1), default(Func<IScheduler, int, IDisposable>)));
-            ReactiveAssert.Throws<ArgumentNullException>(() => s.Schedule(42, DateTimeOffset.Now, default(Func<IScheduler, int, IDisposable>)));
+            using (DispatcherHelpers.RunTest(out var disp))
+            {
+                var s = new DispatcherScheduler(disp);
+                ReactiveAssert.Throws<ArgumentNullException>(() => s.Schedule(42, default(Func<IScheduler, int, IDisposable>)));
+                ReactiveAssert.Throws<ArgumentNullException>(() => s.Schedule(42, TimeSpan.FromSeconds(1), default(Func<IScheduler, int, IDisposable>)));
+                ReactiveAssert.Throws<ArgumentNullException>(() => s.Schedule(42, DateTimeOffset.Now, default(Func<IScheduler, int, IDisposable>)));
+            }
         }
 
-        [Fact]
+        [TestMethod]
         [Asynchronous]
         public void Schedule()
         {
-            var disp = DispatcherHelpers.EnsureDispatcher();
-
-            RunAsync(evt =>
+            using (DispatcherHelpers.RunTest(out var disp))
             {
-                var id = Thread.CurrentThread.ManagedThreadId;
-                var sch = new DispatcherScheduler(disp);
-                sch.Schedule(() =>
+                RunAsync(evt =>
                 {
-                    Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
-                    disp.InvokeShutdown();
-                    evt.Set();
+                    var id = Environment.CurrentManagedThreadId;
+                    var sch = new DispatcherScheduler(disp);
+                    sch.Schedule(() =>
+                    {
+                        Assert.NotEqual(id, Environment.CurrentManagedThreadId);
+                        evt.Set();
+                    });
                 });
-            });
+            }
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleError()
         {
-            var ex = new Exception();
-
-            var id = Thread.CurrentThread.ManagedThreadId;
-            var disp = DispatcherHelpers.EnsureDispatcher();
-            var evt = new ManualResetEvent(false);
-            disp.UnhandledException += (o, e) =>
+            using (DispatcherHelpers.RunTest(out var disp))
             {
-#if NET45 || NET46
-                Assert.Same(ex, e.Exception); // CHECK
-#else
-                Assert.Same(ex, e.Exception.InnerException); // CHECK
-#endif
-                evt.Set();
-                e.Handled = true;
-            };
-            var sch = new DispatcherScheduler(disp);
-            sch.Schedule(() => { throw ex; });
-            evt.WaitOne();
-            disp.InvokeShutdown();
+                var ex = new Exception();
+
+                var id = Environment.CurrentManagedThreadId;
+                var evt = new ManualResetEvent(false);
+
+                Exception thrownEx = null;
+                disp.UnhandledException += (o, e) =>
+                {
+                    thrownEx = e.Exception;
+                    evt.Set();
+                    e.Handled = true;
+                };
+                var sch = new DispatcherScheduler(disp);
+                sch.Schedule(() => { throw ex; });
+                evt.WaitOne();
+
+                Assert.Same(ex, thrownEx);
+            }
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleRelative()
         {
             ScheduleRelative_(TimeSpan.FromSeconds(0.2));
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleRelative_Zero()
         {
             ScheduleRelative_(TimeSpan.Zero);
@@ -143,111 +156,118 @@ namespace ReactiveTests.Tests
 
         private void ScheduleRelative_(TimeSpan delay)
         {
-            var evt = new ManualResetEvent(false);
-
-            var id = Thread.CurrentThread.ManagedThreadId;
-
-            var disp = DispatcherHelpers.EnsureDispatcher();
-            var sch = new DispatcherScheduler(disp);
-
-            sch.Schedule(delay, () =>
+            using (DispatcherHelpers.RunTest(out var disp))
             {
-                Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
+                var evt = new ManualResetEvent(false);
+
+                var id = Environment.CurrentManagedThreadId;
+
+                var sch = new DispatcherScheduler(disp);
 
                 sch.Schedule(delay, () =>
                 {
-                    Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
-                    evt.Set();
-                });
-            });
+                    Assert.NotEqual(id, Environment.CurrentManagedThreadId);
 
-            evt.WaitOne();
-            disp.InvokeShutdown();
+                    sch.Schedule(delay, () =>
+                    {
+                        Assert.NotEqual(id, Environment.CurrentManagedThreadId);
+                        evt.Set();
+                    });
+                });
+
+                evt.WaitOne();
+            }
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleRelative_Cancel()
         {
-            var evt = new ManualResetEvent(false);
-            
-            var id = Thread.CurrentThread.ManagedThreadId;
-
-            var disp = DispatcherHelpers.EnsureDispatcher();
-            var sch = new DispatcherScheduler(disp);
-            
-            sch.Schedule(TimeSpan.FromSeconds(0.1), () =>
+            using (DispatcherHelpers.RunTest(out var disp))
             {
-                Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
+                var evt = new ManualResetEvent(false);
+                
+                var id = Environment.CurrentManagedThreadId;
 
-                var d = sch.Schedule(TimeSpan.FromSeconds(0.1), () =>
+                var sch = new DispatcherScheduler(disp);
+                
+                sch.Schedule(TimeSpan.FromSeconds(0.1), () =>
                 {
-                    Assert.True(false);
-                    evt.Set();
-                });
+                    Assert.NotEqual(id, Environment.CurrentManagedThreadId);
 
-                sch.Schedule(() =>
-                {
-                    d.Dispose();
-                });
+                    var d = sch.Schedule(TimeSpan.FromSeconds(0.1), () =>
+                    {
+                        Assert.True(false);
+                        evt.Set();
+                    });
 
-                sch.Schedule(TimeSpan.FromSeconds(0.2), () =>
-                {
-                    Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
-                    evt.Set();
-                });
-            });
-
-            evt.WaitOne();
-            disp.InvokeShutdown();
-        }
-
-        [Fact]
-        public void SchedulePeriodic_ArgumentChecking()
-        {
-            var disp = DispatcherHelpers.EnsureDispatcher();
-            var s = new DispatcherScheduler(disp);
-
-            ReactiveAssert.Throws<ArgumentNullException>(() => s.SchedulePeriodic(42, TimeSpan.FromSeconds(1), default(Func<int, int>)));
-            ReactiveAssert.Throws<ArgumentOutOfRangeException>(() => s.SchedulePeriodic(42, TimeSpan.FromSeconds(-1), x => x));
-        }
-
-        [Fact]
-        public void SchedulePeriodic()
-        {
-            var evt = new ManualResetEvent(false);
-
-            var id = Thread.CurrentThread.ManagedThreadId;
-
-            var disp = DispatcherHelpers.EnsureDispatcher();
-            var sch = new DispatcherScheduler(disp);
-
-            var d = new SingleAssignmentDisposable();
-
-            d.Disposable = sch.SchedulePeriodic(1, TimeSpan.FromSeconds(0.1), n =>
-            {
-                Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
-
-                if (n == 3)
-                {
-                    d.Dispose();
+                    sch.Schedule(() =>
+                    {
+                        d.Dispose();
+                    });
 
                     sch.Schedule(TimeSpan.FromSeconds(0.2), () =>
                     {
-                        Assert.NotEqual(id, Thread.CurrentThread.ManagedThreadId);
+                        Assert.NotEqual(id, Environment.CurrentManagedThreadId);
                         evt.Set();
                     });
-                }
+                });
 
-                if (n > 3)
+                evt.WaitOne();
+            }
+        }
+
+        [TestMethod]
+        public void SchedulePeriodic_ArgumentChecking()
+        {
+            using (DispatcherHelpers.RunTest(out var disp))
+            {
+                var s = new DispatcherScheduler(disp);
+
+#pragma warning disable IDE0034 // (Simplify 'default'.) Want to be explicit about overload being tested.
+                ReactiveAssert.Throws<ArgumentNullException>(() => s.SchedulePeriodic(42, TimeSpan.FromSeconds(1), default(Func<int, int>)));
+#pragma warning restore IDE0034
+                ReactiveAssert.Throws<ArgumentOutOfRangeException>(() => s.SchedulePeriodic(42, TimeSpan.FromSeconds(-1), x => x));
+            }
+        }
+
+        [TestMethod]
+        public void SchedulePeriodic()
+        {
+            using (DispatcherHelpers.RunTest(out var disp))
+            {
+                var evt = new ManualResetEvent(false);
+
+                var id = Environment.CurrentManagedThreadId;
+
+                var sch = new DispatcherScheduler(disp);
+
+                var d = new SingleAssignmentDisposable();
+
+                d.Disposable = sch.SchedulePeriodic(1, TimeSpan.FromSeconds(0.1), n =>
                 {
-                    Assert.True(false);
-                }
+                    Assert.NotEqual(id, Environment.CurrentManagedThreadId);
 
-                return n + 1;
-            });
+                    if (n == 3)
+                    {
+                        d.Dispose();
 
-            evt.WaitOne();
-            disp.InvokeShutdown();
+                        sch.Schedule(TimeSpan.FromSeconds(0.2), () =>
+                        {
+                            Assert.NotEqual(id, Environment.CurrentManagedThreadId);
+                            evt.Set();
+                        });
+                    }
+
+                    if (n > 3)
+                    {
+                        Assert.True(false);
+                    }
+
+                    return n + 1;
+                });
+
+                evt.WaitOne();
+            }
         }
     }
 }

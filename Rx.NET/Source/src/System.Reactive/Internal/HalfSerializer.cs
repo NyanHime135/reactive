@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Diagnostics;
@@ -29,14 +29,15 @@ namespace System.Reactive
         /// <param name="item">The item to signal.</param>
         /// <param name="wip">Indicates there is an emission going on currently.</param>
         /// <param name="error">The field containing an error or terminal indicator.</param>
-        public static void ForwardOnNext<T>(ISink<T> sink, T item, ref int wip, ref Exception error)
+        public static void ForwardOnNext<T>(ISink<T> sink, T item, ref int wip, ref Exception? error)
         {
             if (Interlocked.CompareExchange(ref wip, 1, 0) == 0)
             {
                 sink.ForwardOnNext(item);
+
                 if (Interlocked.Decrement(ref wip) != 0)
                 {
-                    var ex = error;
+                    var ex = error!; // NB: A concurrent OnError or OnCompleted will either set Terminated or the original exception, so never null here.
                     if (ex != ExceptionHelper.Terminated)
                     {
                         error = ExceptionHelper.Terminated;
@@ -48,10 +49,8 @@ namespace System.Reactive
                     }
                 }
             }
-#if (HAS_TRACE)
             else if (error == null)
                 Trace.TraceWarning("OnNext called while another OnNext call was in progress on the same Observer.");
-#endif
         }
 
         /// <summary>
@@ -66,7 +65,7 @@ namespace System.Reactive
         /// <param name="ex">The exception to signal sooner or later.</param>
         /// <param name="wip">Indicates there is an emission going on currently.</param>
         /// <param name="error">The field containing an error or terminal indicator.</param>
-        public static void ForwardOnError<T>(ISink<T> sink, Exception ex, ref int wip, ref Exception error)
+        public static void ForwardOnError<T>(ISink<T> sink, Exception ex, ref int wip, ref Exception? error)
         {
             if (ExceptionHelper.TrySetException(ref error, ex))
             {
@@ -90,7 +89,7 @@ namespace System.Reactive
         /// <param name="sink">The observer to signal events in a serialized fashion.</param>
         /// <param name="wip">Indicates there is an emission going on currently.</param>
         /// <param name="error">The field containing an error or terminal indicator.</param>
-        public static void ForwardOnCompleted<T>(ISink<T> sink, ref int wip, ref Exception error)
+        public static void ForwardOnCompleted<T>(ISink<T> sink, ref int wip, ref Exception? error)
         {
             if (ExceptionHelper.TrySetException(ref error, ExceptionHelper.Terminated))
             {

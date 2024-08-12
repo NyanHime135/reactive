@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 namespace System.Reactive.Linq.ObservableImpl
@@ -15,7 +15,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _predicate = predicate;
         }
 
-        protected override _ CreateSink(IObserver<bool> observer) => new _(_predicate, observer);
+        protected override _ CreateSink(IObserver<bool> observer) => new(_predicate, observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
@@ -31,7 +31,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
             public override void OnNext(TSource value)
             {
-                var res = false;
+                bool res;
                 try
                 {
                     res = _predicate(value);

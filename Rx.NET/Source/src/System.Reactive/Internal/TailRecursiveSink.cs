@@ -1,8 +1,9 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reactive.Disposables;
 using System.Threading;
 
@@ -10,15 +11,16 @@ namespace System.Reactive
 {
     internal abstract class TailRecursiveSink<TSource> : IdentitySink<TSource>
     {
+        private readonly Stack<IEnumerator<IObservable<TSource>>> _stack = new();
+
+        private bool _isDisposed;
+        private int _trampoline;
+        private IDisposable? _currentSubscription;
+
         protected TailRecursiveSink(IObserver<TSource> observer)
             : base(observer)
         {
         }
-
-        private bool _isDisposed;
-        private int _trampoline;
-        private IDisposable _currentSubscription;
-        private readonly Stack<IEnumerator<IObservable<TSource>>> _stack = new Stack<IEnumerator<IObservable<TSource>>>();
 
         public void Run(IEnumerable<IObservable<TSource>> sources)
         {
@@ -38,6 +40,7 @@ namespace System.Reactive
             {
                 DisposeAll();
             }
+
             base.Dispose(disposing);
         }
 
@@ -58,7 +61,7 @@ namespace System.Reactive
                         enumerator.Dispose();
                     }
 
-                    Disposable.TryDispose(ref _currentSubscription);
+                    Disposable.Dispose(ref _currentSubscription);
                 }
                 else
                 {
@@ -67,7 +70,6 @@ namespace System.Reactive
                         var currentEnumerator = _stack.Peek();
 
                         var currentObservable = default(IObservable<TSource>);
-                        var next = default(IObservable<TSource>);
 
                         try
                         {
@@ -84,14 +86,14 @@ namespace System.Reactive
                             continue;
                         }
 
+                        IObservable<TSource>? next;
+
                         try
                         {
-                            next = Helpers.Unpack(currentObservable);
-
+                            next = Unpack(currentObservable);
                         }
                         catch (Exception ex)
                         {
-                            next = null;
                             if (!Fail(ex))
                             {
                                 Volatile.Write(ref _isDisposed, true);
@@ -164,6 +166,24 @@ namespace System.Reactive
                     break;
                 }
             }
+
+            static IObservable<T>? Unpack<T>(IObservable<T>? source)
+            {
+                bool hasOpt;
+
+                do
+                {
+                    hasOpt = false;
+
+                    if (source is IEvaluatableObservable<T> eval)
+                    {
+                        source = eval.Eval();
+                        hasOpt = true;
+                    }
+                } while (hasOpt);
+
+                return source;
+            }
         }
 
         private void DisposeAll()
@@ -182,9 +202,9 @@ namespace System.Reactive
             }
         }
 
-        protected abstract IEnumerable<IObservable<TSource>> Extract(IObservable<TSource> source);
+        protected abstract IEnumerable<IObservable<TSource>>? Extract(IObservable<TSource> source);
 
-        private bool TryGetEnumerator(IEnumerable<IObservable<TSource>> sources, out IEnumerator<IObservable<TSource>> result)
+        private bool TryGetEnumerator(IEnumerable<IObservable<TSource>> sources, [NotNullWhen(true)] out IEnumerator<IObservable<TSource>>? result)
         {
             try
             {

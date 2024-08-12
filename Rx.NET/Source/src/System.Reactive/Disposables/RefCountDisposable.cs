@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Threading;
@@ -12,7 +12,9 @@ namespace System.Reactive.Disposables
     public sealed class RefCountDisposable : ICancelable
     {
         private readonly bool _throwWhenDisposed;
-        private IDisposable _disposable;
+
+        private IDisposable? _disposable;
+
         /// <summary>
         /// Holds the number of active child disposables and the
         /// indicator bit (31) if the main _disposable has been marked
@@ -52,7 +54,6 @@ namespace System.Reactive.Disposables
         /// </summary>
         /// <returns>A dependent disposable contributing to the reference count that manages the underlying disposable's lifetime.</returns>
         /// <exception cref="ObjectDisposedException">This instance has been disposed and is configured to throw in this case by <see cref="RefCountDisposable(IDisposable, bool)"/>.</exception>
-        [Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1024:UsePropertiesWhereAppropriate", Justification = "Backward compat + non-trivial work for a property getter.")]
         public IDisposable GetDisposable()
         {
             // the current state
@@ -165,7 +166,7 @@ namespace System.Reactive.Disposables
 
         private sealed class InnerDisposable : IDisposable
         {
-            private RefCountDisposable _parent;
+            private RefCountDisposable? _parent;
 
             public InnerDisposable(RefCountDisposable parent)
             {

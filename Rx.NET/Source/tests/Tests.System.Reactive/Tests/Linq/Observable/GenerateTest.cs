@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -9,17 +9,21 @@ using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Reactive.Testing;
 using ReactiveTests.Dummies;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+using Assert = Xunit.Assert;
 
 namespace ReactiveTests.Tests
 {
+    [TestClass]
     public class GenerateTest : ReactiveTest
     {
         #region + Non-timed +
 
-        [Fact]
+        [TestMethod]
         public void Generate_ArgumentChecking()
         {
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Generate(0, DummyFunc<int, bool>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, int>.Instance, (IScheduler)null));
@@ -29,7 +33,7 @@ namespace ReactiveTests.Tests
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Generate(0, DummyFunc<int, bool>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, int>.Instance, DummyScheduler.Instance).Subscribe(null));
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_Finite()
         {
             var scheduler = new TestScheduler();
@@ -47,7 +51,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_Throw_Condition()
         {
             var scheduler = new TestScheduler();
@@ -63,7 +67,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_Throw_ResultSelector()
         {
             var scheduler = new TestScheduler();
@@ -79,7 +83,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_Throw_Iterate()
         {
             var scheduler = new TestScheduler();
@@ -96,7 +100,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_Dispose()
         {
             var scheduler = new TestScheduler();
@@ -112,7 +116,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_DefaultScheduler_ArgumentChecking()
         {
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Generate(0, null, DummyFunc<int, int>.Instance, DummyFunc<int, int>.Instance));
@@ -121,14 +125,14 @@ namespace ReactiveTests.Tests
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Generate(0, DummyFunc<int, bool>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, int>.Instance).Subscribe(null));
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_DefaultScheduler()
         {
             Observable.Generate(0, x => x < 10, x => x + 1, x => x).AssertEqual(Observable.Generate(0, x => x < 10, x => x + 1, x => x, DefaultScheduler.Instance));
         }
 
 #if !NO_PERF
-        [Fact]
+        [TestMethod]
         public void Generate_LongRunning1()
         {
             var start = default(ManualResetEvent);
@@ -147,7 +151,7 @@ namespace ReactiveTests.Tests
             Assert.True(done);
         }
 
-        [Fact]
+        [TestMethod]
         [MethodImpl(MethodImplOptions.NoOptimization)]
         public void Generate_LongRunning2()
         {
@@ -173,7 +177,7 @@ namespace ReactiveTests.Tests
             Assert.True(lst.Take(100).SequenceEqual(Enumerable.Range(0, 100)));
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_LongRunning_Throw()
         {
             var start = default(ManualResetEvent);
@@ -200,7 +204,7 @@ namespace ReactiveTests.Tests
 
         #region + Timed +
 
-        [Fact]
+        [TestMethod]
         public void Generate_TimeSpan_ArgumentChecking()
         {
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Generate(0, DummyFunc<int, bool>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, TimeSpan>.Instance, null));
@@ -211,7 +215,7 @@ namespace ReactiveTests.Tests
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Generate(0, DummyFunc<int, bool>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, TimeSpan>.Instance, DummyScheduler.Instance).Subscribe(null));
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_TimeSpan_Finite()
         {
             var scheduler = new TestScheduler();
@@ -229,7 +233,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_TimeSpan_Throw_Condition()
         {
             var scheduler = new TestScheduler();
@@ -245,7 +249,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_TimeSpan_Throw_ResultSelector()
         {
             var scheduler = new TestScheduler();
@@ -261,7 +265,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_TimeSpan_Throw_Iterate()
         {
             var scheduler = new TestScheduler();
@@ -278,7 +282,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_TimeSpan_Throw_TimeSelector()
         {
             var scheduler = new TestScheduler();
@@ -294,7 +298,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_TimeSpan_Dispose()
         {
             var scheduler = new TestScheduler();
@@ -311,7 +315,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_TimeSpan_DefaultScheduler_ArgumentChecking()
         {
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Generate(0, null, DummyFunc<int, int>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, TimeSpan>.Instance));
@@ -321,13 +325,13 @@ namespace ReactiveTests.Tests
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Generate(0, DummyFunc<int, bool>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, TimeSpan>.Instance).Subscribe(null));
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_TimeSpan_DefaultScheduler()
         {
             Observable.Generate(0, x => x < 10, x => x + 1, x => x, x => TimeSpan.FromMilliseconds(x)).AssertEqual(Observable.Generate(0, x => x < 10, x => x + 1, x => x, x => TimeSpan.FromMilliseconds(x), DefaultScheduler.Instance));
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_DateTimeOffset_ArgumentChecking()
         {
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Generate(0, DummyFunc<int, bool>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, DateTimeOffset>.Instance, null));
@@ -338,7 +342,7 @@ namespace ReactiveTests.Tests
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Generate(0, DummyFunc<int, bool>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, DateTimeOffset>.Instance, DummyScheduler.Instance).Subscribe(null));
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_DateTimeOffset_Finite()
         {
             var scheduler = new TestScheduler();
@@ -356,7 +360,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_DateTimeOffset_Throw_Condition()
         {
             var scheduler = new TestScheduler();
@@ -372,7 +376,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_DateTimeOffset_Throw_ResultSelector()
         {
             var scheduler = new TestScheduler();
@@ -388,7 +392,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_DateTimeOffset_Throw_Iterate()
         {
             var scheduler = new TestScheduler();
@@ -405,7 +409,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_DateTimeOffset_Throw_TimeSelector()
         {
             var scheduler = new TestScheduler();
@@ -421,7 +425,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_DateTimeOffset_Dispose()
         {
             var scheduler = new TestScheduler();
@@ -438,7 +442,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_DateTimeOffset_DefaultScheduler_ArgumentChecking()
         {
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Generate(0, null, DummyFunc<int, int>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, DateTimeOffset>.Instance));
@@ -448,11 +452,45 @@ namespace ReactiveTests.Tests
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Generate(0, DummyFunc<int, bool>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, int>.Instance, DummyFunc<int, DateTimeOffset>.Instance).Subscribe(null));
         }
 
-        [Fact]
+        [TestMethod]
         public void Generate_DateTimeOffset_DefaultScheduler()
         {
             Observable.Generate(0, x => x < 10, x => x + 1, x => x, x => DateTimeOffset.Now.AddMilliseconds(x)).AssertEqual(Observable.Generate(0, x => x < 10, x => x + 1, x => x, x => DateTimeOffset.Now.AddMilliseconds(x), DefaultScheduler.Instance));
         }
+
+        [TestMethod]
+        public void Generate_TimeSpan_DisposeLater()
+        {
+            var count = 0;
+            var d = Observable.Generate(0, i => true, i => i + 1, i => i, _ => TimeSpan.Zero)
+                .WithLatestFrom(Observable.Return(1).Concat(Observable.Never<int>()), (a, b) => a)
+                .Subscribe(v => Volatile.Write(ref count, v));
+
+            while (Volatile.Read(ref count) < 10000)
+            {
+                Thread.Sleep(10);
+            }
+
+            d.Dispose();
+        }
+
+        [TestMethod]
+        public void Generate_DateTimeOffset_DisposeLater()
+        {
+            var count = 0;
+
+            var d = Observable.Generate(0, i => true, i => i + 1, i => i, _ => DateTimeOffset.Now)
+                .WithLatestFrom(Observable.Return(1).Concat(Observable.Never<int>()), (a, b) => a)
+                .Subscribe(v => Volatile.Write(ref count, v));
+
+            while (Volatile.Read(ref count) < 10000)
+            {
+                Thread.Sleep(10);
+            }
+
+            d.Dispose();
+        }
+
 
         #endregion
     }

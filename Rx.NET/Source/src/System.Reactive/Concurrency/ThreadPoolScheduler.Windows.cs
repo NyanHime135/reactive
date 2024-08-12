@@ -1,8 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
-#if WINDOWS
+#if LEGACY_WINRT
 using System.ComponentModel;
 using Windows.System.Threading;
 
@@ -15,7 +15,7 @@ namespace System.Reactive.Concurrency
     [CLSCompliant(false)]
     public sealed class ThreadPoolScheduler : LocalScheduler, ISchedulerPeriodic
     {
-        private static readonly Lazy<ThreadPoolScheduler> LazyDefault = new Lazy<ThreadPoolScheduler>(() => new ThreadPoolScheduler());
+        private static readonly Lazy<ThreadPoolScheduler> LazyDefault = new(static () => new ThreadPoolScheduler());
 
         /// <summary>
         /// Constructs a ThreadPoolScheduler that schedules units of work on the Windows ThreadPool.
@@ -161,7 +161,7 @@ namespace System.Reactive.Concurrency
             private Func<TState, TState> _action;
 
             private readonly ThreadPoolTimer _timer;
-            private readonly AsyncLock _gate = new AsyncLock();
+            private readonly AsyncLock _gate = new();
 
             public PeriodicallyScheduledWorkItem(TState state, TimeSpan period, Func<TState, TState> action)
             {
@@ -177,7 +177,7 @@ namespace System.Reactive.Concurrency
             {
                 _gate.Wait(
                     this,
-                    @this => @this._state = @this._action(@this._state));
+                    static @this => @this._state = @this._action(@this._state));
             }
 
             public void Dispose()

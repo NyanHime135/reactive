@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -25,8 +25,8 @@ namespace System.Reactive.Linq.ObservableImpl
 
             internal abstract class _ : IdentitySink<TSource>
             {
-                protected IStopwatch _watch;
-                protected IScheduler _scheduler;
+                protected readonly IScheduler _scheduler;
+                private IStopwatch? _watch;
 
                 protected _(TParent parent, IObserver<TSource> observer)
                     : base(observer)
@@ -43,13 +43,15 @@ namespace System.Reactive.Linq.ObservableImpl
                     base.Run(parent._source);
                 }
 
+                protected TimeSpan Elapsed => _watch!.Elapsed; // NB: Only used after Run is called.
+
                 protected abstract void RunCore(TParent parent);
             }
 
             internal abstract class S : _
             {
-                protected readonly object _gate = new object();
-                protected IDisposable _cancelable;
+                protected readonly object _gate = new();
+                protected SerialDisposableValue _cancelable;
 
                 protected S(TParent parent, IObserver<TSource> observer)
                     : base(parent, observer)
@@ -60,12 +62,12 @@ namespace System.Reactive.Linq.ObservableImpl
                 protected bool _ready;
                 protected bool _active;
                 protected bool _running;
-                protected Queue<Reactive.TimeInterval<TSource>> _queue = new Queue<Reactive.TimeInterval<TSource>>();
+                protected Queue<Reactive.TimeInterval<TSource>> _queue = new();
 
                 private bool _hasCompleted;
                 private TimeSpan _completeAt;
                 private bool _hasFailed;
-                private Exception _exception;
+                private Exception? _exception;
 
                 protected override void Dispose(bool disposing)
                 {
@@ -73,7 +75,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     if (disposing)
                     {
-                        Disposable.TryDispose(ref _cancelable);
+                        _cancelable.Dispose();
                     }
                 }
 
@@ -83,7 +85,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     lock (_gate)
                     {
-                        var next = _watch.Elapsed.Add(_delay);
+                        var next = Elapsed.Add(_delay);
 
                         _queue.Enqueue(new Reactive.TimeInterval<TSource>(value, next));
 
@@ -93,7 +95,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     if (shouldRun)
                     {
-                        Disposable.TrySetSerial(ref _cancelable, _scheduler.Schedule(this, _delay, (@this, a) => @this.DrainQueue(a)));
+                        DrainQueue(_delay);
                     }
                 }
 
@@ -127,7 +129,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     lock (_gate)
                     {
-                        var next = _watch.Elapsed.Add(_delay);
+                        var next = Elapsed.Add(_delay);
 
                         _completeAt = next;
                         _hasCompleted = true;
@@ -138,11 +140,16 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     if (shouldRun)
                     {
-                        Disposable.TrySetSerial(ref _cancelable, _scheduler.Schedule(this, _delay, (@this, a) => @this.DrainQueue(a)));
+                        DrainQueue(_delay);
                     }
                 }
 
-                protected void DrainQueue(Action<S, TimeSpan> recurse)
+                protected void DrainQueue(TimeSpan next)
+                {
+                    _cancelable.Disposable = _scheduler.Schedule(this, next, static (@this, a) => @this.DrainQueue(a));
+                }
+
+                private void DrainQueue(Action<S, TimeSpan> recurse)
                 {
                     lock (_gate)
                     {
@@ -187,7 +194,7 @@ namespace System.Reactive.Linq.ObservableImpl
                             }
                             else
                             {
-                                var now = _watch.Elapsed;
+                                var now = Elapsed;
 
                                 if (_queue.Count > 0)
                                 {
@@ -228,7 +235,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                         if (hasValue)
                         {
-                            ForwardOnNext(value);
+                            ForwardOnNext(value!);
                             shouldYield = true;
                         }
                         else
@@ -239,7 +246,7 @@ namespace System.Reactive.Linq.ObservableImpl
                             }
                             else if (hasFailed)
                             {
-                                ForwardOnError(error);
+                                ForwardOnError(error!);
                             }
                             else if (shouldRecurse)
                             {
@@ -254,23 +261,22 @@ namespace System.Reactive.Linq.ObservableImpl
 
             protected abstract class L : _
             {
-                protected readonly object _gate = new object();
-                protected IDisposable _cancelable;
-                private readonly SemaphoreSlim _evt = new SemaphoreSlim(0);
+                protected readonly object _gate = new();
+                private readonly SemaphoreSlim _evt = new(0);
 
                 protected L(TParent parent, IObserver<TSource> observer)
                     : base(parent, observer)
                 {
                 }
 
+                protected Queue<Reactive.TimeInterval<TSource>> _queue = new();
+                protected SerialDisposableValue _cancelable;
                 protected TimeSpan _delay;
-                protected Queue<Reactive.TimeInterval<TSource>> _queue = new Queue<Reactive.TimeInterval<TSource>>();
 
-                private CancellationTokenSource _stop;
                 private bool _hasCompleted;
                 private TimeSpan _completeAt;
                 private bool _hasFailed;
-                private Exception _exception;
+                private Exception? _exception;
 
                 protected override void Dispose(bool disposing)
                 {
@@ -278,23 +284,23 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     if (disposing)
                     {
-                        Disposable.TryDispose(ref _cancelable);
+                        _cancelable.Dispose();
                     }
                 }
 
                 protected void ScheduleDrain()
                 {
-                    _stop = new CancellationTokenSource();
-                    Disposable.TrySetSerial(ref _cancelable, new CancellationDisposable(_stop));
+                    var cd = new CancellationDisposable();
+                    _cancelable.Disposable = cd;
 
-                    _scheduler.AsLongRunning().ScheduleLongRunning(DrainQueue);
+                    _scheduler.AsLongRunning()!.ScheduleLongRunning(cd.Token, DrainQueue); // NB: This class is only used with long-running schedulers.
                 }
 
                 public override void OnNext(TSource value)
                 {
                     lock (_gate)
                     {
-                        var next = _watch.Elapsed.Add(_delay);
+                        var next = Elapsed.Add(_delay);
 
                         _queue.Enqueue(new Reactive.TimeInterval<TSource>(value, next));
 
@@ -323,7 +329,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     lock (_gate)
                     {
-                        var next = _watch.Elapsed.Add(_delay);
+                        var next = Elapsed.Add(_delay);
 
                         _completeAt = next;
                         _hasCompleted = true;
@@ -332,13 +338,15 @@ namespace System.Reactive.Linq.ObservableImpl
                     }
                 }
 
-                private void DrainQueue(ICancelable cancel)
+#pragma warning disable CA1068 // (CancellationToken parameters must come last.) Method signature determined by ISchedulerLongRunning, so we can't comply with the analyzer rule here.
+                private void DrainQueue(CancellationToken token, ICancelable cancel)
+#pragma warning restore CA1068
                 {
                     while (true)
                     {
                         try
                         {
-                            _evt.Wait(_stop.Token);
+                            _evt.Wait(token);
                         }
                         catch (OperationCanceledException)
                         {
@@ -364,7 +372,7 @@ namespace System.Reactive.Linq.ObservableImpl
                             }
                             else
                             {
-                                var now = _watch.Elapsed;
+                                var now = Elapsed;
 
                                 if (_queue.Count > 0)
                                 {
@@ -396,11 +404,11 @@ namespace System.Reactive.Linq.ObservableImpl
                         if (shouldWait)
                         {
                             var timer = new ManualResetEventSlim();
-                            _scheduler.ScheduleAction(timer, waitTime, slimTimer => { slimTimer.Set(); });
+                            _scheduler.ScheduleAction(timer, waitTime, static slimTimer => { slimTimer.Set(); });
 
                             try
                             {
-                                timer.Wait(_stop.Token);
+                                timer.Wait(token);
                             }
                             catch (OperationCanceledException)
                             {
@@ -410,7 +418,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                         if (hasValue)
                         {
-                            ForwardOnNext(value);
+                            ForwardOnNext(value!);
                         }
                         else
                         {
@@ -420,7 +428,7 @@ namespace System.Reactive.Linq.ObservableImpl
                             }
                             else if (hasFailed)
                             {
-                                ForwardOnError(error);
+                                ForwardOnError(error!);
                             }
 
                             return;
@@ -455,7 +463,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     _ready = false;
 
-                    Disposable.TrySetSingle(ref _cancelable, parent._scheduler.ScheduleAction(this, parent._dueTime, @this => @this.Start()));
+                    _cancelable.TrySetFirst(parent._scheduler.ScheduleAction(this, parent._dueTime, static @this => @this.Start()));
                 }
 
                 private void Start()
@@ -465,7 +473,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     lock (_gate)
                     {
-                        _delay = _watch.Elapsed;
+                        _delay = Elapsed;
 
                         var oldQueue = _queue;
                         _queue = new Queue<Reactive.TimeInterval<TSource>>();
@@ -489,7 +497,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     if (shouldRun)
                     {
-                        Disposable.TrySetSerial(ref _cancelable, _scheduler.Schedule((Base<Absolute>.S)this, next, (@this, a) => DrainQueue(a)));
+                        DrainQueue(next);
                     }
                 }
             }
@@ -506,14 +514,14 @@ namespace System.Reactive.Linq.ObservableImpl
                     // ScheduleDrain might have already set a newer disposable
                     // using TrySetSerial would cancel it, stopping the emission
                     // and hang the consumer
-                    Disposable.TrySetSingle(ref _cancelable, parent._scheduler.ScheduleAction(this, parent._dueTime, @this => @this.Start()));
+                    _cancelable.TrySetFirst(parent._scheduler.ScheduleAction(this, parent._dueTime, static @this => @this.Start()));
                 }
 
                 private void Start()
                 {
                     lock (_gate)
                     {
-                        _delay = _watch.Elapsed;
+                        _delay = Elapsed;
 
                         var oldQueue = _queue;
                         _queue = new Queue<Reactive.TimeInterval<TSource>>();
@@ -589,8 +597,8 @@ namespace System.Reactive.Linq.ObservableImpl
 
             internal abstract class _ : IdentitySink<TSource>
             {
-                private readonly CompositeDisposable _delays = new CompositeDisposable();
-                private readonly object _gate = new object();
+                private readonly CompositeDisposable _delays = [];
+                private readonly object _gate = new();
 
                 private readonly Func<TSource, IObservable<TDelay>> _delaySelector;
 
@@ -601,20 +609,20 @@ namespace System.Reactive.Linq.ObservableImpl
                 }
 
                 private bool _atEnd;
-                private IDisposable _subscription;
+                private SingleAssignmentDisposableValue _subscription;
 
                 public void Run(TParent parent)
                 {
                     _atEnd = false;
 
-                    Disposable.SetSingle(ref _subscription, RunCore(parent));
+                    _subscription.Disposable = RunCore(parent);
                 }
 
                 protected override void Dispose(bool disposing)
                 {
                     if (disposing)
                     {
-                        Disposable.TryDispose(ref _subscription);
+                        _subscription.Dispose();
                         _delays.Dispose();
                     }
                     base.Dispose(disposing);
@@ -624,7 +632,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var delay = default(IObservable<TDelay>);
+                    IObservable<TDelay> delay;
                     try
                     {
                         delay = _delaySelector(value);
@@ -675,6 +683,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     private readonly _ _parent;
                     private readonly TSource _value;
+                    private bool _once;
 
                     public DelayObserver(_ parent, TSource value)
                     {
@@ -684,12 +693,16 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     public override void OnNext(TDelay value)
                     {
-                        lock (_parent._gate)
+                        if (!_once)
                         {
-                            _parent.ForwardOnNext(_value);
+                            _once = true;
+                            lock (_parent._gate)
+                            {
+                                _parent.ForwardOnNext(_value);
 
-                            _parent._delays.Remove(this);
-                            _parent.CheckDone();
+                                _parent._delays.Remove(this);
+                                _parent.CheckDone();
+                            }
                         }
                     }
 
@@ -703,12 +716,15 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     public override void OnCompleted()
                     {
-                        lock (_parent._gate)
+                        if (!_once)
                         {
-                            _parent.ForwardOnNext(_value);
+                            lock (_parent._gate)
+                            {
+                                _parent.ForwardOnNext(_value);
 
-                            _parent._delays.Remove(this);
-                            _parent.CheckDone();
+                                _parent._delays.Remove(this);
+                                _parent.CheckDone();
+                            }
                         }
                     }
                 }
@@ -776,7 +792,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     private readonly _ _parent;
                     private readonly IObservable<TSource> _source;
-                    private IDisposable _subscription;
+                    private SerialDisposableValue _subscription;
 
                     public SubscriptionDelayObserver(_ parent, IObservable<TSource> source)
                     {
@@ -786,12 +802,12 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     internal void SetFirst(IDisposable d)
                     {
-                        Disposable.TrySetSingle(ref _subscription, d);
+                        _subscription.TrySetFirst(d);
                     }
 
                     public void OnNext(TDelay value)
                     {
-                        Disposable.TrySetSerial(ref _subscription, _source.SubscribeSafe(_parent));
+                        _subscription.Disposable = _source.SubscribeSafe(_parent);
                     }
 
                     public void OnError(Exception error)
@@ -801,12 +817,12 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     public void OnCompleted()
                     {
-                        Disposable.TrySetSerial(ref _subscription, _source.SubscribeSafe(_parent));
+                        _subscription.Disposable = _source.SubscribeSafe(_parent);
                     }
 
                     public void Dispose()
                     {
-                        Disposable.TryDispose(ref _subscription);
+                        _subscription.Dispose();
                     }
                 }
             }

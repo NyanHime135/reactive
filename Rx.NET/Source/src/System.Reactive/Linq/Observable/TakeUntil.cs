@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -18,15 +18,15 @@ namespace System.Reactive.Linq.ObservableImpl
             _other = other;
         }
 
-        protected override _ CreateSink(IObserver<TSource> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<TSource> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(this);
 
         internal sealed class _ : IdentitySink<TSource>
         {
-            private IDisposable _otherDisposable;
+            private SingleAssignmentDisposableValue _otherDisposable;
             private int _halfSerializer;
-            private Exception _error;
+            private Exception? _error;
 
             public _(IObserver<TSource> observer)
                 : base(observer)
@@ -35,7 +35,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
             public void Run(TakeUntil<TSource, TOther> parent)
             {
-                Disposable.SetSingle(ref _otherDisposable, parent._other.Subscribe(new OtherObserver(this)));
+                _otherDisposable.Disposable = parent._other.Subscribe(new OtherObserver(this));
                 Run(parent._source);
             }
 
@@ -43,9 +43,9 @@ namespace System.Reactive.Linq.ObservableImpl
             {
                 if (disposing)
                 {
-                    if (!Disposable.GetIsDisposed(ref _otherDisposable))
+                    if (!_otherDisposable.IsDisposed)
                     {
-                        Disposable.TryDispose(ref _otherDisposable);
+                        _otherDisposable.Dispose();
                     }
                 }
 
@@ -79,7 +79,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 public void OnCompleted()
                 {
                     // Completion doesn't mean termination in Rx.NET for this operator
-                    Disposable.TryDispose(ref _parent._otherDisposable);
+                    _parent._otherDisposable.Dispose();
                 }
 
                 public void OnError(Exception error)
@@ -128,15 +128,15 @@ namespace System.Reactive.Linq.ObservableImpl
             return new TakeUntil<TSource>(_source, endTime, _scheduler);
         }
 
-        protected override _ CreateSink(IObserver<TSource> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<TSource> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(this);
 
         internal sealed class _ : IdentitySink<TSource>
         {
-            private IDisposable _timerDisposable;
+            private SingleAssignmentDisposableValue _timerDisposable;
             private int _wip;
-            private Exception _error;
+            private Exception? _error;
 
             public _(IObserver<TSource> observer)
                 : base(observer)
@@ -145,7 +145,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
             public void Run(TakeUntil<TSource> parent)
             {
-                Disposable.SetSingle(ref _timerDisposable, parent._scheduler.ScheduleAction(this, parent._endTime, state => state.Tick()));
+                _timerDisposable.Disposable = parent._scheduler.ScheduleAction(this, parent._endTime, state => state.Tick());
                 Run(parent._source);
             }
 
@@ -153,8 +153,9 @@ namespace System.Reactive.Linq.ObservableImpl
             {
                 if (disposing)
                 {
-                    Disposable.TryDispose(ref _timerDisposable);
+                    _timerDisposable.Dispose();
                 }
+
                 base.Dispose(disposing);
             }
 

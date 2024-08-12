@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -58,18 +58,12 @@ namespace System.Reactive.Subjects
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="bufferSize"/> is less than zero.</exception>
         public ReplaySubject(int bufferSize)
         {
-            switch (bufferSize)
+            _implementation = bufferSize switch
             {
-                case 1:
-                    _implementation = new ReplayOne();
-                    break;
-                case int.MaxValue:
-                    _implementation = new ReplayAll();
-                    break;
-                default:
-                    _implementation = new ReplayMany(bufferSize);
-                    break;
-            }
+                1 => new ReplayOne(),
+                int.MaxValue => new ReplayAll(),
+                _ => new ReplayMany(bufferSize),
+            };
         }
 
         /// <summary>
@@ -221,12 +215,12 @@ namespace System.Reactive.Subjects
 
         private abstract class ReplayBase : SubjectBase<T>
         {
-            private readonly object _gate = new object();
+            private readonly object _gate = new();
 
             private ImmutableList<IScheduledObserver<T>> _observers;
 
             private bool _isStopped;
-            private Exception _error;
+            private Exception? _error;
             private bool _isDisposed;
 
             protected ReplayBase()
@@ -252,7 +246,8 @@ namespace System.Reactive.Subjects
 
             public override void OnNext(T value)
             {
-                var o = default(IScheduledObserver<T>[]);
+                IScheduledObserver<T>[]? o = null;
+
                 lock (_gate)
                 {
                     CheckDisposed();
@@ -281,7 +276,8 @@ namespace System.Reactive.Subjects
 
             public override void OnError(Exception error)
             {
-                var o = default(IScheduledObserver<T>[]);
+                IScheduledObserver<T>[]? o = null;
+
                 lock (_gate)
                 {
                     CheckDisposed();
@@ -313,7 +309,8 @@ namespace System.Reactive.Subjects
 
             public override void OnCompleted()
             {
-                var o = default(IScheduledObserver<T>[]);
+                IScheduledObserver<T>[]? o = null;
+
                 lock (_gate)
                 {
                     CheckDisposed();
@@ -405,7 +402,7 @@ namespace System.Reactive.Subjects
                 lock (_gate)
                 {
                     _isDisposed = true;
-                    _observers = null;
+                    _observers = null!; // NB: Disposed checks happen prior to accessing _observers.
                     DisposeCore();
                 }
             }
@@ -441,8 +438,8 @@ namespace System.Reactive.Subjects
 
             private sealed class Subscription : IDisposable
             {
-                private readonly ReplayBase _subject;
-                private readonly IScheduledObserver<T> _observer;
+                private ReplayBase _subject;
+                private IScheduledObserver<T>? _observer;
 
                 public Subscription(ReplayBase subject, IScheduledObserver<T> observer)
                 {
@@ -452,8 +449,16 @@ namespace System.Reactive.Subjects
 
                 public void Dispose()
                 {
-                    _observer.Dispose();
-                    _subject.Unsubscribe(_observer);
+                    var observer = Interlocked.Exchange(ref _observer, null);
+                    if (observer == null)
+                    {
+                        return;
+                    }
+
+                    observer.Dispose();
+
+                    _subject.Unsubscribe(observer);
+                    _subject = null!;
                 }
             }
         }
@@ -571,7 +576,7 @@ namespace System.Reactive.Subjects
         private sealed class ReplayOne : ReplayBufferBase
         {
             private bool _hasValue;
-            private T _value;
+            private T? _value;
 
             protected override void Trim()
             {
@@ -593,7 +598,7 @@ namespace System.Reactive.Subjects
                 if (_hasValue)
                 {
                     n = 1;
-                    observer.OnNext(_value);
+                    observer.OnNext(_value!);
                 }
 
                 return n;
@@ -693,7 +698,7 @@ namespace System.Reactive.Subjects
         /// <summary>
         /// Gate to control ownership transfer and protect data structures.
         /// </summary>
-        private readonly object _gate = new object();
+        private readonly object _gate = new();
 
         /// <summary>
         /// Observer to forward notifications to.
@@ -703,18 +708,18 @@ namespace System.Reactive.Subjects
         /// <summary>
         /// Queue to enqueue OnNext notifications into.
         /// </summary>
-        private Queue<T> _queue = new Queue<T>();
+        private Queue<T> _queue = new();
 
         /// <summary>
         /// Standby queue to swap out for _queue when transferring ownership. This allows to reuse
         /// queues in case of busy subjects where the initial replay doesn't suffice to catch up.
         /// </summary>
-        private Queue<T> _queue2;
+        private Queue<T>? _queue2;
 
         /// <summary>
         /// Exception passed to an OnError notification, if any.
         /// </summary>
-        private Exception _error;
+        private Exception? _error;
 
         /// <summary>
         /// Indicates whether an OnCompleted notification was received.
@@ -806,10 +811,7 @@ namespace System.Reactive.Subjects
                         //
                         if (_queue.Count > 0)
                         {
-                            if (_queue2 == null)
-                            {
-                                _queue2 = new Queue<T>();
-                            }
+                            _queue2 ??= new Queue<T>();
 
                             //
                             // Swap out the current queue for a fresh or recycled one. The standby

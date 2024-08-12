@@ -1,19 +1,25 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
 using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
+using System.Threading.Tasks;
+
 using Microsoft.Reactive.Testing;
 using ReactiveTests.Dummies;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+using Assert = Xunit.Assert;
 
 namespace ReactiveTests.Tests
 {
+    [TestClass]
     public class SingleAsyncTest : ReactiveTest
     {
 
-        [Fact]
+        [TestMethod]
         public void SingleAsync_ArgumentChecking()
         {
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.SingleAsync(default(IObservable<int>)));
@@ -21,7 +27,7 @@ namespace ReactiveTests.Tests
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.SingleAsync(DummyObservable<int>.Instance, default));
         }
 
-        [Fact]
+        [TestMethod]
         public void SingleAsync_Empty()
         {
             var scheduler = new TestScheduler();
@@ -44,7 +50,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void SingleAsync_One()
         {
             var scheduler = new TestScheduler();
@@ -69,7 +75,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void SingleAsync_Many()
         {
             var scheduler = new TestScheduler();
@@ -94,7 +100,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void SingleAsync_Error()
         {
             var scheduler = new TestScheduler();
@@ -119,7 +125,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void SingleAsync_Predicate()
         {
             var scheduler = new TestScheduler();
@@ -146,7 +152,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void SingleAsync_Predicate_Empty()
         {
             var scheduler = new TestScheduler();
@@ -171,7 +177,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void SingleAsync_Predicate_One()
         {
             var scheduler = new TestScheduler();
@@ -199,7 +205,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void SingleAsync_Predicate_Throw()
         {
             var scheduler = new TestScheduler();
@@ -224,7 +230,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void SingleAsync_PredicateThrows()
         {
             var scheduler = new TestScheduler();
@@ -253,5 +259,59 @@ namespace ReactiveTests.Tests
             );
         }
 
+        [TestMethod] // https://github.com/dotnet/reactive/issues/1235
+        public void MeaningfulStackTrace()
+        {
+            static async Task Core()
+            {
+                static void AssertException(Exception e)
+                {
+                    Assert.IsType(typeof(InvalidOperationException), e);
+
+                    Assert.NotNull(e.StackTrace);
+                    Assert.NotEqual("", e.StackTrace);
+
+                    Assert.True(e.StackTrace.Contains("SingleAsync"));
+                }
+
+                var xs = Observable.Range(0, 2).SingleAsync();
+
+                try
+                {
+                    await xs;
+                }
+                catch (Exception e)
+                {
+                    AssertException(e);
+                }
+
+                try
+                {
+                    await xs.ToTask();
+                }
+                catch (Exception e)
+                {
+                    AssertException(e);
+                }
+
+                var tcs = new TaskCompletionSource<bool>();
+
+                xs.Subscribe(
+                    _ => { },
+                    e => tcs.SetException(e),
+                    () => tcs.SetResult(false));
+
+                try
+                {
+                    await tcs.Task;
+                }
+                catch (Exception e)
+                {
+                    AssertException(e);
+                }
+            }
+
+            Core().GetAwaiter().GetResult();
+        }
     }
 }

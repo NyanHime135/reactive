@@ -1,26 +1,32 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using Microsoft.Reactive.Testing;
 using ReactiveTests.Dummies;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+using Assert = Xunit.Assert;
 
 namespace ReactiveTests.Tests
 {
 #pragma warning disable IDE0039 // Use local function
+    [TestClass]
     public class ZipTest : ReactiveTest
     {
 
         #region ArgumentChecking
 
-        [Fact]
+        [TestMethod]
         public void Zip_ArgumentChecking()
         {
             var someObservable = DummyObservable<int>.Instance;
@@ -34,7 +40,7 @@ namespace ReactiveTests.Tests
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Zip(someObservable, default(IEnumerable<int>), (_, __) => 0));
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_ArgumentCheckingHighArity()
         {
             var xs = DummyObservable<int>.Instance;
@@ -195,7 +201,7 @@ namespace ReactiveTests.Tests
 
         #region Never/Never
 
-        [Fact]
+        [TestMethod]
         public void Zip_Never2()
         {
             var scheduler = new TestScheduler();
@@ -216,7 +222,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Never3()
         {
             var scheduler = new TestScheduler();
@@ -238,7 +244,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Never4()
         {
             var scheduler = new TestScheduler();
@@ -261,7 +267,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Never5()
         {
             var scheduler = new TestScheduler();
@@ -285,7 +291,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Never6()
         {
             var scheduler = new TestScheduler();
@@ -310,7 +316,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Never7()
         {
             var scheduler = new TestScheduler();
@@ -336,7 +342,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Never8()
         {
             var scheduler = new TestScheduler();
@@ -363,7 +369,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Never9()
         {
             var scheduler = new TestScheduler();
@@ -391,7 +397,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Never10()
         {
             var scheduler = new TestScheduler();
@@ -420,7 +426,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Never11()
         {
             var scheduler = new TestScheduler();
@@ -450,7 +456,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Never12()
         {
             var scheduler = new TestScheduler();
@@ -481,7 +487,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Never13()
         {
             var scheduler = new TestScheduler();
@@ -513,7 +519,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Never14()
         {
             var scheduler = new TestScheduler();
@@ -546,7 +552,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Never15()
         {
             var scheduler = new TestScheduler();
@@ -580,7 +586,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Never16()
         {
             var scheduler = new TestScheduler();
@@ -619,7 +625,7 @@ namespace ReactiveTests.Tests
 
         #region Never/Empty
 
-        [Fact]
+        [TestMethod]
         public void Zip_NeverEmpty()
         {
             var scheduler = new TestScheduler();
@@ -649,7 +655,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_EmptyNever()
         {
             var scheduler = new TestScheduler();
@@ -683,7 +689,7 @@ namespace ReactiveTests.Tests
 
         #region Empty/Empty
 
-        [Fact]
+        [TestMethod]
         public void Zip_EmptyEmpty()
         {
             var scheduler = new TestScheduler();
@@ -715,7 +721,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Empty2()
         {
             var scheduler = new TestScheduler();
@@ -738,7 +744,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Empty3()
         {
             var scheduler = new TestScheduler();
@@ -762,7 +768,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Empty4()
         {
             var scheduler = new TestScheduler();
@@ -787,7 +793,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Empty5()
         {
             var scheduler = new TestScheduler();
@@ -813,7 +819,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Empty6()
         {
             var scheduler = new TestScheduler();
@@ -840,7 +846,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Empty7()
         {
             var scheduler = new TestScheduler();
@@ -868,7 +874,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Empty8()
         {
             var scheduler = new TestScheduler();
@@ -897,7 +903,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Empty9()
         {
             var scheduler = new TestScheduler();
@@ -927,7 +933,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Empty10()
         {
             var scheduler = new TestScheduler();
@@ -958,7 +964,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Empty11()
         {
             var scheduler = new TestScheduler();
@@ -990,7 +996,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Empty12()
         {
             var scheduler = new TestScheduler();
@@ -1023,7 +1029,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Empty13()
         {
             var scheduler = new TestScheduler();
@@ -1057,7 +1063,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Empty14()
         {
             var scheduler = new TestScheduler();
@@ -1092,7 +1098,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Empty15()
         {
             var scheduler = new TestScheduler();
@@ -1128,7 +1134,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_Empty16()
         {
             var scheduler = new TestScheduler();
@@ -1169,7 +1175,7 @@ namespace ReactiveTests.Tests
 
         #region Empty/Some
 
-        [Fact]
+        [TestMethod]
         public void Zip_EmptyNonEmpty()
         {
             var scheduler = new TestScheduler();
@@ -1202,7 +1208,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_NonEmptyEmpty()
         {
             var scheduler = new TestScheduler();
@@ -1239,7 +1245,7 @@ namespace ReactiveTests.Tests
 
         #region Never/Some
 
-        [Fact]
+        [TestMethod]
         public void Zip_NeverNonEmpty()
         {
             var scheduler = new TestScheduler();
@@ -1270,7 +1276,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_NonEmptyNever()
         {
             var scheduler = new TestScheduler();
@@ -1305,7 +1311,7 @@ namespace ReactiveTests.Tests
 
         #region Some/Some
 
-        [Fact]
+        [TestMethod]
         public void Zip_NonEmptyNonEmpty()
         {
             var scheduler = new TestScheduler();
@@ -1344,7 +1350,7 @@ namespace ReactiveTests.Tests
 
         #region Empty/Error
 
-        [Fact]
+        [TestMethod]
         public void Zip_EmptyError()
         {
             var scheduler = new TestScheduler();
@@ -1378,7 +1384,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_ErrorEmpty()
         {
             var scheduler = new TestScheduler();
@@ -1416,7 +1422,7 @@ namespace ReactiveTests.Tests
 
         #region Never/Error
 
-        [Fact]
+        [TestMethod]
         public void Zip_NeverError()
         {
             var scheduler = new TestScheduler();
@@ -1449,7 +1455,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_ErrorNever()
         {
             var scheduler = new TestScheduler();
@@ -1486,7 +1492,7 @@ namespace ReactiveTests.Tests
 
         #region Error/Error
 
-        [Fact]
+        [TestMethod]
         public void Zip_ErrorError()
         {
             var scheduler = new TestScheduler();
@@ -1525,7 +1531,7 @@ namespace ReactiveTests.Tests
 
         #region Some/Error
 
-        [Fact]
+        [TestMethod]
         public void Zip_SomeError()
         {
             var scheduler = new TestScheduler();
@@ -1560,7 +1566,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_ErrorSome()
         {
             var scheduler = new TestScheduler();
@@ -1599,7 +1605,7 @@ namespace ReactiveTests.Tests
 
         #region Simple
 
-        [Fact]
+        [TestMethod]
         public void Zip_LeftCompletesFirst()
         {
             var scheduler = new TestScheduler();
@@ -1634,7 +1640,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_RightCompletesFirst()
         {
             var scheduler = new TestScheduler();
@@ -1669,7 +1675,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_LeftTriggersSelectorError()
         {
             var scheduler = new TestScheduler();
@@ -1703,7 +1709,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_RightTriggersSelectorError()
         {
             var scheduler = new TestScheduler();
@@ -1741,7 +1747,7 @@ namespace ReactiveTests.Tests
 
         #region SymmetricReturn
 
-        [Fact]
+        [TestMethod]
         public void Zip_SymmetricReturn2()
         {
             var scheduler = new TestScheduler();
@@ -1764,7 +1770,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SymmetricReturn3()
         {
             var scheduler = new TestScheduler();
@@ -1788,7 +1794,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SymmetricReturn4()
         {
             var scheduler = new TestScheduler();
@@ -1813,7 +1819,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SymmetricReturn5()
         {
             var scheduler = new TestScheduler();
@@ -1839,7 +1845,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SymmetricReturn6()
         {
             var scheduler = new TestScheduler();
@@ -1866,7 +1872,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SymmetricReturn7()
         {
             var scheduler = new TestScheduler();
@@ -1894,7 +1900,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SymmetricReturn8()
         {
             var scheduler = new TestScheduler();
@@ -1923,7 +1929,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SymmetricReturn9()
         {
             var scheduler = new TestScheduler();
@@ -1953,7 +1959,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SymmetricReturn10()
         {
             var scheduler = new TestScheduler();
@@ -1984,7 +1990,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SymmetricReturn11()
         {
             var scheduler = new TestScheduler();
@@ -2016,7 +2022,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SymmetricReturn12()
         {
             var scheduler = new TestScheduler();
@@ -2049,7 +2055,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SymmetricReturn13()
         {
             var scheduler = new TestScheduler();
@@ -2083,7 +2089,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SymmetricReturn14()
         {
             var scheduler = new TestScheduler();
@@ -2118,7 +2124,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SymmetricReturn15()
         {
             var scheduler = new TestScheduler();
@@ -2154,7 +2160,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SymmetricReturn16()
         {
             var scheduler = new TestScheduler();
@@ -2195,7 +2201,7 @@ namespace ReactiveTests.Tests
 
         #region Various
 
-        [Fact]
+        [TestMethod]
         public void Zip_SomeDataAsymmetric1()
         {
             var scheduler = new TestScheduler();
@@ -2224,7 +2230,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SomeDataAsymmetric2()
         {
             var scheduler = new TestScheduler();
@@ -2253,7 +2259,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SomeDataSymmetric()
         {
             var scheduler = new TestScheduler();
@@ -2286,7 +2292,7 @@ namespace ReactiveTests.Tests
 
         #region SelectorThrows
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows()
         {
             var scheduler = new TestScheduler();
@@ -2325,7 +2331,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows2()
         {
             var scheduler = new TestScheduler();
@@ -2351,7 +2357,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows3()
         {
             var scheduler = new TestScheduler();
@@ -2378,7 +2384,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows4()
         {
             var scheduler = new TestScheduler();
@@ -2406,7 +2412,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows5()
         {
             var scheduler = new TestScheduler();
@@ -2435,7 +2441,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows6()
         {
             var scheduler = new TestScheduler();
@@ -2465,7 +2471,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows7()
         {
             var scheduler = new TestScheduler();
@@ -2496,7 +2502,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows8()
         {
             var scheduler = new TestScheduler();
@@ -2528,7 +2534,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows9()
         {
             var scheduler = new TestScheduler();
@@ -2561,7 +2567,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows10()
         {
             var scheduler = new TestScheduler();
@@ -2595,7 +2601,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows11()
         {
             var scheduler = new TestScheduler();
@@ -2630,7 +2636,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows12()
         {
             var scheduler = new TestScheduler();
@@ -2666,7 +2672,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows13()
         {
             var scheduler = new TestScheduler();
@@ -2703,7 +2709,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows14()
         {
             var scheduler = new TestScheduler();
@@ -2741,7 +2747,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows15()
         {
             var scheduler = new TestScheduler();
@@ -2780,7 +2786,7 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_SelectorThrows16()
         {
             var scheduler = new TestScheduler();
@@ -2824,7 +2830,7 @@ namespace ReactiveTests.Tests
 
         #region GetEnumeratorThrows
 
-        [Fact]
+        [TestMethod]
         public void Zip_GetEnumeratorThrows()
         {
             var ex = new Exception();
@@ -2855,7 +2861,7 @@ namespace ReactiveTests.Tests
 
         #region AllCompleted
 
-        [Fact]
+        [TestMethod]
         public void Zip_AllCompleted2()
         {
             var scheduler = new TestScheduler();
@@ -2885,7 +2891,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_AllCompleted3()
         {
             var scheduler = new TestScheduler();
@@ -2916,7 +2922,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_AllCompleted4()
         {
             var scheduler = new TestScheduler();
@@ -2948,7 +2954,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_AllCompleted5()
         {
             var scheduler = new TestScheduler();
@@ -2981,7 +2987,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_AllCompleted6()
         {
             var scheduler = new TestScheduler();
@@ -3015,7 +3021,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_AllCompleted7()
         {
             var scheduler = new TestScheduler();
@@ -3050,7 +3056,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_AllCompleted8()
         {
             var scheduler = new TestScheduler();
@@ -3086,7 +3092,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_AllCompleted9()
         {
             var scheduler = new TestScheduler();
@@ -3123,7 +3129,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_AllCompleted10()
         {
             var scheduler = new TestScheduler();
@@ -3161,7 +3167,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_AllCompleted11()
         {
             var scheduler = new TestScheduler();
@@ -3200,7 +3206,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_AllCompleted12()
         {
             var scheduler = new TestScheduler();
@@ -3240,7 +3246,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_AllCompleted13()
         {
             var scheduler = new TestScheduler();
@@ -3281,7 +3287,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_AllCompleted14()
         {
             var scheduler = new TestScheduler();
@@ -3323,7 +3329,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_AllCompleted15()
         {
             var scheduler = new TestScheduler();
@@ -3366,7 +3372,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_AllCompleted16()
         {
             var scheduler = new TestScheduler();
@@ -3414,7 +3420,7 @@ namespace ReactiveTests.Tests
 
         #region ZipWithEnumerable
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_NeverNever()
         {
             var evt = new ManualResetEvent(false);
@@ -3446,7 +3452,7 @@ namespace ReactiveTests.Tests
             evt.Set();
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_NeverEmpty()
         {
             var scheduler = new TestScheduler();
@@ -3456,7 +3462,7 @@ namespace ReactiveTests.Tests
             );
 
             var e = new MockEnumerable<int>(scheduler,
-                Enumerable.Empty<int>()
+                []
             );
 
             var res = scheduler.Start(() =>
@@ -3475,7 +3481,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_EmptyNever()
         {
             var evt = new ManualResetEvent(false);
@@ -3510,7 +3516,7 @@ namespace ReactiveTests.Tests
             evt.Set();
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_EmptyEmpty()
         {
             var scheduler = new TestScheduler();
@@ -3521,7 +3527,7 @@ namespace ReactiveTests.Tests
             );
 
             var e2 = new MockEnumerable<int>(scheduler,
-                Enumerable.Empty<int>()
+                []
             );
 
             var res = scheduler.Start(() =>
@@ -3541,7 +3547,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_EmptyNonEmpty()
         {
             var scheduler = new TestScheduler();
@@ -3552,7 +3558,7 @@ namespace ReactiveTests.Tests
             );
 
             var o = new MockEnumerable<int>(scheduler,
-                new[] { 2 }
+                [2]
             );
 
             var res = scheduler.Start(() =>
@@ -3572,13 +3578,13 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_NonEmptyEmpty()
         {
             var scheduler = new TestScheduler();
 
             var e = new MockEnumerable<int>(scheduler,
-                Enumerable.Empty<int>()
+                []
             );
 
             var o = scheduler.CreateHotObservable(
@@ -3604,13 +3610,13 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_NeverNonEmpty()
         {
             var scheduler = new TestScheduler();
 
             var o = new MockEnumerable<int>(scheduler,
-                new[] { 2 }
+                [2]
             );
 
             var n = scheduler.CreateHotObservable(
@@ -3633,7 +3639,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_NonEmptyNonEmpty()
         {
             var scheduler = new TestScheduler();
@@ -3645,7 +3651,7 @@ namespace ReactiveTests.Tests
             );
 
             var o2 = new MockEnumerable<int>(scheduler,
-                new[] { 3 }
+                [3]
             );
 
             var res = scheduler.Start(() =>
@@ -3666,7 +3672,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_EmptyError()
         {
             var scheduler = new TestScheduler();
@@ -3699,7 +3705,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_ErrorEmpty()
         {
             var scheduler = new TestScheduler();
@@ -3707,7 +3713,7 @@ namespace ReactiveTests.Tests
             var ex = new Exception();
 
             var e = new MockEnumerable<int>(scheduler,
-                Enumerable.Empty<int>()
+                []
             );
 
             var f = scheduler.CreateHotObservable(
@@ -3732,7 +3738,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_NeverError()
         {
             var scheduler = new TestScheduler();
@@ -3763,7 +3769,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_ErrorNever()
         {
             var evt = new ManualResetEvent(false);
@@ -3800,7 +3806,7 @@ namespace ReactiveTests.Tests
             evt.Set();
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_ErrorError()
         {
             var scheduler = new TestScheduler();
@@ -3834,7 +3840,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_SomeError()
         {
             var scheduler = new TestScheduler();
@@ -3868,7 +3874,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_ErrorSome()
         {
             var scheduler = new TestScheduler();
@@ -3876,7 +3882,7 @@ namespace ReactiveTests.Tests
             var ex = new Exception();
 
             var o = new MockEnumerable<int>(scheduler,
-                new[] { 2 }
+                [2]
             );
 
             var e = scheduler.CreateHotObservable(
@@ -3901,7 +3907,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_SomeDataBothSides()
         {
             var scheduler = new TestScheduler();
@@ -3909,7 +3915,7 @@ namespace ReactiveTests.Tests
             var ex = new Exception();
 
             var o = new MockEnumerable<int>(scheduler,
-                new[] { 5, 4, 3, 2 }
+                [5, 4, 3, 2]
             );
 
             var e = scheduler.CreateHotObservable(
@@ -3940,7 +3946,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_EnumeratorThrowsMoveNext()
         {
             var ex = new Exception();
@@ -3975,7 +3981,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_EnumeratorThrowsCurrent()
         {
             var ex = new Exception();
@@ -4010,7 +4016,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipWithEnumerable_SelectorThrows()
         {
             var scheduler = new TestScheduler();
@@ -4023,7 +4029,7 @@ namespace ReactiveTests.Tests
             );
 
             var o2 = new MockEnumerable<int>(scheduler,
-                new[] { 3, 5 }
+                [3, 5]
             );
 
             var ex = new Exception();
@@ -4052,6 +4058,113 @@ namespace ReactiveTests.Tests
             o2.Subscriptions.AssertEqual(
                 Subscribe(200, 225)
             );
+        }
+
+        [TestMethod]
+        public void ZipWithEnumerable_NoAsyncDisposeOnMoveNext()
+        {
+            var source = new Subject<int>();
+
+            var disposable = new SingleAssignmentDisposable();
+
+            var other = new MoveNextDisposeDetectEnumerable(disposable, true);
+
+            disposable.Disposable = source.Zip(other, (a, b) => a + b).Subscribe();
+
+            source.OnNext(1);
+
+            Assert.True(other.IsDisposed);
+            Assert.False(other.DisposedWhileMoveNext);
+            Assert.False(other.DisposedWhileCurrent);
+        }
+
+        [TestMethod]
+        public void ZipWithEnumerable_NoAsyncDisposeOnCurrent()
+        {
+            var source = new Subject<int>();
+
+            var disposable = new SingleAssignmentDisposable();
+
+            var other = new MoveNextDisposeDetectEnumerable(disposable, false);
+
+            disposable.Disposable = source.Zip(other, (a, b) => a + b).Subscribe();
+
+            source.OnNext(1);
+
+            Assert.True(other.IsDisposed);
+            Assert.False(other.DisposedWhileMoveNext);
+            Assert.False(other.DisposedWhileCurrent);
+        }
+
+        private class MoveNextDisposeDetectEnumerable : IEnumerable<int>, IEnumerator<int>
+        {
+            private readonly IDisposable _disposable;
+
+            private readonly bool _disposeOnMoveNext;
+
+            private bool _moveNextRunning;
+
+            private bool _currentRunning;
+
+            internal bool DisposedWhileMoveNext;
+
+            internal bool DisposedWhileCurrent;
+
+            internal bool IsDisposed;
+
+            internal MoveNextDisposeDetectEnumerable(IDisposable disposable, bool disposeOnMoveNext)
+            {
+                _disposable = disposable;
+                _disposeOnMoveNext = disposeOnMoveNext;
+            }
+            public int Current
+            {
+                get
+                {
+                    _currentRunning = true;
+                    if (!_disposeOnMoveNext)
+                    {
+                        _disposable.Dispose();
+                    }
+                    _currentRunning = false;
+                    return 0;
+                }
+            }
+
+            object IEnumerator.Current => Current;
+
+            public void Dispose()
+            {
+                DisposedWhileMoveNext = _moveNextRunning;
+                DisposedWhileCurrent = _currentRunning;
+                IsDisposed = true;
+            }
+
+            public IEnumerator<int> GetEnumerator()
+            {
+                return this;
+            }
+
+            public bool MoveNext()
+            {
+                _moveNextRunning = true;
+                if (_disposeOnMoveNext)
+                {
+                    _disposable.Dispose();
+                }
+                _moveNextRunning = false;
+                return true;
+            }
+
+            public void Reset()
+            {
+                throw new NotSupportedException();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return this;
+            }
         }
 
         private IEnumerable<int> EnumerableNever(ManualResetEvent evt)
@@ -4146,16 +4259,16 @@ namespace ReactiveTests.Tests
 
         #region NAry
 
-        [Fact]
+        [TestMethod]
         public void Zip_NAry_ArgumentChecking()
         {
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Zip(default(IEnumerable<IObservable<int>>)));
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Zip(default(IEnumerable<IObservable<int>>), _ => 42));
-            ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Zip(new[] { Observable.Return(42) }, default(Func<IList<int>, string>)));
+            ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Zip([Observable.Return(42)], default(Func<IList<int>, string>)));
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Zip(default(IObservable<int>[])));
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_NAry_Symmetric()
         {
             var scheduler = new TestScheduler();
@@ -4169,8 +4282,8 @@ namespace ReactiveTests.Tests
             );
 
             res.Messages.AssertEqual(
-                OnNext<IList<int>>(230, l => l.SequenceEqual(new[] { 1, 2, 3 })),
-                OnNext<IList<int>>(260, l => l.SequenceEqual(new[] { 4, 5, 6 })),
+                OnNext<IList<int>>(230, l => l.SequenceEqual([1, 2, 3])),
+                OnNext<IList<int>>(260, l => l.SequenceEqual([4, 5, 6])),
                 OnCompleted<IList<int>>(420)
             );
 
@@ -4187,7 +4300,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_NAry_Symmetric_Selector()
         {
             var scheduler = new TestScheduler();
@@ -4219,7 +4332,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_NAry_Asymmetric()
         {
             var scheduler = new TestScheduler();
@@ -4233,8 +4346,8 @@ namespace ReactiveTests.Tests
             );
 
             res.Messages.AssertEqual(
-                OnNext<IList<int>>(230, l => l.SequenceEqual(new[] { 1, 2, 3 })),
-                OnNext<IList<int>>(260, l => l.SequenceEqual(new[] { 4, 5, 6 })),
+                OnNext<IList<int>>(230, l => l.SequenceEqual([1, 2, 3])),
+                OnNext<IList<int>>(260, l => l.SequenceEqual([4, 5, 6])),
                 OnCompleted<IList<int>>(310)
             );
 
@@ -4251,7 +4364,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_NAry_Asymmetric_Selector()
         {
             var scheduler = new TestScheduler();
@@ -4283,7 +4396,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_NAry_Error()
         {
             var ex = new Exception();
@@ -4299,7 +4412,7 @@ namespace ReactiveTests.Tests
             );
 
             res.Messages.AssertEqual(
-                OnNext<IList<int>>(230, l => l.SequenceEqual(new[] { 1, 2, 3 })),
+                OnNext<IList<int>>(230, l => l.SequenceEqual([1, 2, 3])),
                 OnError<IList<int>>(250, ex)
             );
 
@@ -4316,7 +4429,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_NAry_Error_Selector()
         {
             var ex = new Exception();
@@ -4349,7 +4462,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_NAry_Enumerable_Simple()
         {
             var scheduler = new TestScheduler();
@@ -4368,8 +4481,8 @@ namespace ReactiveTests.Tests
             Assert.Equal(200, started);
 
             res.Messages.AssertEqual(
-                OnNext<IList<int>>(230, l => l.SequenceEqual(new[] { 1, 2, 3 })),
-                OnNext<IList<int>>(260, l => l.SequenceEqual(new[] { 4, 5, 6 })),
+                OnNext<IList<int>>(230, l => l.SequenceEqual([1, 2, 3])),
+                OnNext<IList<int>>(260, l => l.SequenceEqual([4, 5, 6])),
                 OnCompleted<IList<int>>(420)
             );
 
@@ -4386,7 +4499,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip_NAry_Enumerable_Throws()
         {
             var ex = new Exception();
@@ -4420,7 +4533,7 @@ namespace ReactiveTests.Tests
 
         #region AtLeastOneThrows
 
-        [Fact]
+        [TestMethod]
         public void Zip_AtLeastOneThrows4()
         {
             var ex = new Exception();
@@ -4448,7 +4561,7 @@ namespace ReactiveTests.Tests
 
         #endregion
 
-        [Fact]
+        [TestMethod]
         public void Zip2WithImmediateReturn()
         {
             Observable.Zip<Unit, Unit, Unit>(
@@ -4459,10 +4572,10 @@ namespace ReactiveTests.Tests
             .Subscribe(_ => {  });
         }
 
-        [Fact]
+        [TestMethod]
         public void Zip3WithImmediateReturn()
         {
-            int result = 0;
+            var result = 0;
 
             Observable.Zip<int, int, int, int>(
                 Observable.Return(1),
@@ -4475,7 +4588,7 @@ namespace ReactiveTests.Tests
             Assert.Equal(7, result);
         }
 
-        [Fact]
+        [TestMethod]
         public void ZipEnumerableWithImmediateReturn()
         {
             Enumerable.Range(0, 100)

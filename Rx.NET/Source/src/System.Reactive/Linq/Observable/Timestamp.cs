@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -17,7 +17,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _scheduler = scheduler;
         }
 
-        protected override _ CreateSink(IObserver<Timestamped<TSource>> observer) => new _(_scheduler, observer);
+        protected override _ CreateSink(IObserver<Timestamped<TSource>> observer) => new(_scheduler, observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 

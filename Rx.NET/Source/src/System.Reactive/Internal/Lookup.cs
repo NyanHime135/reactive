@@ -1,6 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
+
+#nullable disable // TODO: Substitute for implementation that doesn't use DictionaryK, V>.
 
 using System.Collections;
 using System.Collections.Generic;
@@ -19,10 +21,9 @@ namespace System.Reactive
 
         public void Add(K key, E element)
         {
-
             if (!_dictionary.TryGetValue(key, out var list))
             {
-                _dictionary[key] = list = new List<E>();
+                _dictionary[key] = list = [];
             }
 
             list.Add(element);
@@ -36,10 +37,9 @@ namespace System.Reactive
         {
             get
             {
-
                 if (!_dictionary.TryGetValue(key, out var list))
                 {
-                    return Enumerable.Empty<E>();
+                    return [];
                 }
 
                 return Hide(list);

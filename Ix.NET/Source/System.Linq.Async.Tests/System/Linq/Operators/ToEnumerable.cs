@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -22,14 +22,14 @@ namespace Tests
         public void ToEnumerable_Single()
         {
             var xs = Return42.ToEnumerable();
-            Assert.True(xs.SequenceEqual(new[] { 42 }));
+            Assert.True(xs.SequenceEqual([42]));
         }
 
         [Fact]
         public void ToEnumerable_Empty()
         {
             var xs = AsyncEnumerable.Empty<int>().ToEnumerable();
-            Assert.True(xs.SequenceEqual(new int[0]));
+            Assert.True(xs.SequenceEqual([]));
         }
 
         [Fact]

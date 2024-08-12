@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -22,7 +22,7 @@ namespace Tests
         [Fact]
         public async Task CountAsync_Simple()
         {
-            Assert.Equal(0, await new int[0].ToAsyncEnumerable().CountAsync());
+            Assert.Equal(0, await Array.Empty<int>().ToAsyncEnumerable().CountAsync());
             Assert.Equal(3, await new[] { 1, 2, 3 }.ToAsyncEnumerable().CountAsync());
         }
 
@@ -46,7 +46,7 @@ namespace Tests
         [Fact]
         public async Task CountAsync_Predicate()
         {
-            Assert.Equal(0, await new int[0].ToAsyncEnumerable().CountAsync(x => x < 3));
+            Assert.Equal(0, await Array.Empty<int>().ToAsyncEnumerable().CountAsync(x => x < 3));
             Assert.Equal(2, await new[] { 1, 2, 3 }.ToAsyncEnumerable().CountAsync(x => x < 3));
         }
 
@@ -78,7 +78,7 @@ namespace Tests
         [Fact]
         public async Task CountAwaitAsync()
         {
-            Assert.Equal(0, await new int[0].ToAsyncEnumerable().CountAwaitAsync(x => new ValueTask<bool>(x < 3)));
+            Assert.Equal(0, await Array.Empty<int>().ToAsyncEnumerable().CountAwaitAsync(x => new ValueTask<bool>(x < 3)));
             Assert.Equal(2, await new[] { 1, 2, 3 }.ToAsyncEnumerable().CountAwaitAsync(x => new ValueTask<bool>(x < 3)));
         }
 
@@ -111,7 +111,7 @@ namespace Tests
         [Fact]
         public async Task CountAwaitWithCancellationAsync()
         {
-            Assert.Equal(0, await new int[0].ToAsyncEnumerable().CountAwaitWithCancellationAsync((x, ct) => new ValueTask<bool>(x < 3)));
+            Assert.Equal(0, await Array.Empty<int>().ToAsyncEnumerable().CountAwaitWithCancellationAsync((x, ct) => new ValueTask<bool>(x < 3)));
             Assert.Equal(2, await new[] { 1, 2, 3 }.ToAsyncEnumerable().CountAwaitWithCancellationAsync((x, ct) => new ValueTask<bool>(x < 3)));
         }
 

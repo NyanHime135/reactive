@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -7,6 +7,7 @@ using System.Collections.Generic;
 namespace System.Reactive.Linq.ObservableImpl
 {
     internal sealed class ToDictionary<TSource, TKey, TElement> : Producer<IDictionary<TKey, TElement>, ToDictionary<TSource, TKey, TElement>._>
+        where TKey : notnull
     {
         private readonly IObservable<TSource> _source;
         private readonly Func<TSource, TKey> _keySelector;
@@ -21,7 +22,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _comparer = comparer;
         }
 
-        protected override _ CreateSink(IObserver<IDictionary<TKey, TElement>> observer) => new _(this, observer);
+        protected override _ CreateSink(IObserver<IDictionary<TKey, TElement>> observer) => new(this, observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
@@ -47,23 +48,28 @@ namespace System.Reactive.Linq.ObservableImpl
                 }
                 catch (Exception ex)
                 {
-                    _dictionary = null;
+                    Cleanup();
                     ForwardOnError(ex);
                 }
             }
 
             public override void OnError(Exception error)
             {
-                _dictionary = null;
+                Cleanup();
                 ForwardOnError(error);
             }
 
             public override void OnCompleted()
             {
                 var dictionary = _dictionary;
-                _dictionary = null;
+                Cleanup();
                 ForwardOnNext(dictionary);
                 ForwardOnCompleted();
+            }
+
+            private void Cleanup()
+            {
+                _dictionary = null!;
             }
         }
     }

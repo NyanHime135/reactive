@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -37,10 +37,7 @@ namespace System.Reactive
     /// Represents a notification to an observer.
     /// </summary>
     /// <typeparam name="T">The type of the elements received by the observer.</typeparam>
-#if !NO_SERIALIZABLE
     [Serializable]
-#endif
-    [Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2218:OverrideGetHashCodeOnOverridingEquals", Justification = "Resembles a discriminated union with finite number of subclasses (external users shouldn't create their own subtypes), each of which does override GetHashCode itself.")]
     public abstract class Notification<T> : IEquatable<Notification<T>>
     {
         /// <summary>
@@ -63,7 +60,7 @@ namespace System.Reactive
         /// <summary>
         /// Returns the exception of an OnError notification or returns <c>null</c>.
         /// </summary>
-        public abstract Exception Exception { get; }
+        public abstract Exception? Exception { get; }
 
         /// <summary>
         /// Gets the kind of notification that is represented.
@@ -73,12 +70,8 @@ namespace System.Reactive
         /// <summary>
         /// Represents an OnNext notification to an observer.
         /// </summary>
-#if !NO_DEBUGGER_ATTRIBUTES
         [DebuggerDisplay("OnNext({Value})")]
-#endif
-#if !NO_SERIALIZABLE
         [Serializable]
-#endif
         internal sealed class OnNextNotification : Notification<T>
         {
             /// <summary>
@@ -97,7 +90,7 @@ namespace System.Reactive
             /// <summary>
             /// Returns <c>null</c>.
             /// </summary>
-            public override Exception Exception => null;
+            public override Exception? Exception => null;
 
             /// <summary>
             /// Returns <c>true</c>.
@@ -112,12 +105,12 @@ namespace System.Reactive
             /// <summary>
             /// Returns the hash code for this instance.
             /// </summary>
-            public override int GetHashCode() => EqualityComparer<T>.Default.GetHashCode(Value);
+            public override int GetHashCode() => Value?.GetHashCode() ?? 0;
 
             /// <summary>
             /// Indicates whether this instance and a specified object are equal.
             /// </summary>
-            public override bool Equals(Notification<T> other)
+            public override bool Equals(Notification<T>? other)
             {
                 if (ReferenceEquals(this, other))
                 {
@@ -228,12 +221,8 @@ namespace System.Reactive
         /// <summary>
         /// Represents an OnError notification to an observer.
         /// </summary>
-#if !NO_DEBUGGER_ATTRIBUTES
         [DebuggerDisplay("OnError({Exception})")]
-#endif
-#if !NO_SERIALIZABLE
         [Serializable]
-#endif
         internal sealed class OnErrorNotification : Notification<T>
         {
             /// <summary>
@@ -247,7 +236,7 @@ namespace System.Reactive
             /// <summary>
             /// Throws the exception.
             /// </summary>
-            public override T Value { get { Exception.Throw(); return default; } }
+            public override T Value { get { Exception.Throw(); return default!; } }
 
             /// <summary>
             /// Returns the exception.
@@ -272,7 +261,7 @@ namespace System.Reactive
             /// <summary>
             /// Indicates whether this instance and other are equal.
             /// </summary>
-            public override bool Equals(Notification<T> other)
+            public override bool Equals(Notification<T>? other)
             {
                 if (ReferenceEquals(this, other))
                 {
@@ -383,12 +372,8 @@ namespace System.Reactive
         /// <summary>
         /// Represents an OnCompleted notification to an observer.
         /// </summary>
-#if !NO_DEBUGGER_ATTRIBUTES
         [DebuggerDisplay("OnCompleted()")]
-#endif
-#if !NO_SERIALIZABLE
         [Serializable]
-#endif
         internal sealed class OnCompletedNotification : Notification<T>
         {
             /// <summary>
@@ -412,7 +397,7 @@ namespace System.Reactive
             /// <summary>
             /// Returns <c>null</c>.
             /// </summary>
-            public override Exception Exception => null;
+            public override Exception? Exception => null;
 
             /// <summary>
             /// Returns <c>false</c>.
@@ -432,7 +417,7 @@ namespace System.Reactive
             /// <summary>
             /// Indicates whether this instance and other are equal.
             /// </summary>
-            public override bool Equals(Notification<T> other)
+            public override bool Equals(Notification<T>? other)
             {
                 if (ReferenceEquals(this, other))
                 {
@@ -545,7 +530,7 @@ namespace System.Reactive
         /// This means two <see cref="Notification{T}"/> objects can be equal even though they don't represent the same observer method call, but have the same Kind and have equal parameters passed to the observer method.
         /// In case one wants to determine whether two <see cref="Notification{T}"/> objects represent the same observer method call, use Object.ReferenceEquals identity equality instead.
         /// </remarks>
-        public abstract bool Equals(Notification<T> other);
+        public abstract bool Equals(Notification<T>? other);
 
         /// <summary>
         /// Determines whether the two specified <see cref="Notification{T}"/> objects have the same observer message payload.
@@ -565,7 +550,7 @@ namespace System.Reactive
                 return true;
             }
 
-            if ((object)left == null || (object)right == null)
+            if (left is null || right is null)
             {
                 return false;
             }
@@ -596,7 +581,7 @@ namespace System.Reactive
         /// This means two <see cref="Notification{T}"/> objects can be equal even though they don't represent the same observer method call, but have the same Kind and have equal parameters passed to the observer method.
         /// In case one wants to determine whether two <see cref="Notification{T}"/> objects represent the same observer method call, use Object.ReferenceEquals identity equality instead.
         /// </remarks>
-        public override bool Equals(object obj) => Equals(obj as Notification<T>);
+        public override bool Equals(object? obj) => Equals(obj as Notification<T>);
 
         /// <summary>
         /// Invokes the observer's method corresponding to the notification.

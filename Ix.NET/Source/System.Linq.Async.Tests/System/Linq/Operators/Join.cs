@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -167,19 +167,19 @@ namespace Tests
         {
             var customers = new List<Customer>
             {
-                new Customer { CustomerId = "ALFKI" },
-                new Customer { CustomerId = "ANANT" },
-                new Customer { CustomerId = "FISSA" },
+                new() { CustomerId = "ALFKI" },
+                new() { CustomerId = "ANANT" },
+                new() { CustomerId = "FISSA" },
             };
 
             var orders = new List<Order>
             {
-                new Order { OrderId = 1, CustomerId = "ALFKI"},
-                new Order { OrderId = 2, CustomerId = "ALFKI"},
-                new Order { OrderId = 3, CustomerId = "ALFKI"},
-                new Order { OrderId = 4, CustomerId = "FISSA"},
-                new Order { OrderId = 5, CustomerId = "FISSA"},
-                new Order { OrderId = 6, CustomerId = "FISSA"},
+                new() { OrderId = 1, CustomerId = "ALFKI"},
+                new() { OrderId = 2, CustomerId = "ALFKI"},
+                new() { OrderId = 3, CustomerId = "ALFKI"},
+                new() { OrderId = 4, CustomerId = "FISSA"},
+                new() { OrderId = 5, CustomerId = "FISSA"},
+                new() { OrderId = 6, CustomerId = "FISSA"},
             };
 
             var asyncResult = customers.ToAsyncEnumerable()
@@ -201,18 +201,18 @@ namespace Tests
         {
             var customers = new List<Customer>
             {
-                new Customer {CustomerId = "ANANT"},
-                new Customer {CustomerId = "ALFKI"},
-                new Customer {CustomerId = "FISSA"}
+                new() {CustomerId = "ANANT"},
+                new() {CustomerId = "ALFKI"},
+                new() {CustomerId = "FISSA"}
             };
             var orders = new List<Order>
             {
-                new Order { OrderId = 1, CustomerId = "ALFKI"},
-                new Order { OrderId = 2, CustomerId = "ALFKI"},
-                new Order { OrderId = 3, CustomerId = "ALFKI"},
-                new Order { OrderId = 4, CustomerId = "FISSA"},
-                new Order { OrderId = 5, CustomerId = "FISSA"},
-                new Order { OrderId = 6, CustomerId = "FISSA"},
+                new() { OrderId = 1, CustomerId = "ALFKI"},
+                new() { OrderId = 2, CustomerId = "ALFKI"},
+                new() { OrderId = 3, CustomerId = "ALFKI"},
+                new() { OrderId = 4, CustomerId = "FISSA"},
+                new() { OrderId = 5, CustomerId = "FISSA"},
+                new() { OrderId = 6, CustomerId = "FISSA"},
             };
 
             var asyncResult = customers.ToAsyncEnumerable()
@@ -231,28 +231,28 @@ namespace Tests
 
         public class Customer
         {
-            public string CustomerId { get; set; }
+            public string? CustomerId { get; set; }
         }
 
         public class Order
         {
             public int OrderId { get; set; }
-            public string CustomerId { get; set; }
+            public string? CustomerId { get; set; }
         }
 
         public class CustomerOrder : IEquatable<CustomerOrder>
         {
             public int OrderId { get; set; }
-            public string CustomerId { get; set; }
+            public string? CustomerId { get; set; }
 
-            public bool Equals(CustomerOrder other)
+            public bool Equals(CustomerOrder? other)
             {
                 if (other is null) return false;
                 if (ReferenceEquals(this, other)) return true;
                 return OrderId == other.OrderId && string.Equals(CustomerId, other.CustomerId);
             }
 
-            public override bool Equals(object obj)
+            public override bool Equals(object? obj)
             {
                 if (obj is null) return false;
                 if (ReferenceEquals(this, obj)) return true;

@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Disposables;
@@ -20,7 +20,7 @@ namespace System.Reactive.Concurrency
             private readonly TaskPoolScheduler _scheduler;
             private readonly Func<IScheduler, TState, IDisposable> _action;
 
-            private IDisposable _cancel;
+            private SerialDisposableValue _cancel;
 
             public ScheduledWorkItem(TaskPoolScheduler scheduler, TState state, Func<IScheduler, TState, IDisposable> action)
             {
@@ -30,12 +30,12 @@ namespace System.Reactive.Concurrency
 
                 var cancelable = new CancellationDisposable();
 
-                Disposable.SetSingle(ref _cancel, cancelable);
+                _cancel.Disposable = cancelable;
 
                 scheduler._taskFactory.StartNew(
                     thisObject =>
                     {
-                        var @this = (ScheduledWorkItem<TState>)thisObject;
+                        var @this = (ScheduledWorkItem<TState>)thisObject!;
                         //
                         // BREAKING CHANGE v2.0 > v1.x - No longer escalating exceptions using a throwing
                         //                               helper thread.
@@ -60,7 +60,7 @@ namespace System.Reactive.Concurrency
                         // exceptions at stage 2. If the exception isn't handled at the Rx level, it
                         // propagates by means of a rethrow, falling back to behavior in 3.
                         //
-                        Disposable.TrySetSerial(ref @this._cancel, @this._action(@this._scheduler, @this._state));
+                        @this._cancel.Disposable = @this._action(@this._scheduler, @this._state);
                     },
                     this,
                     cancelable.Token);
@@ -68,7 +68,7 @@ namespace System.Reactive.Concurrency
 
             public void Dispose()
             {
-                Disposable.TryDispose(ref _cancel);
+                _cancel.Dispose();
             }
         }
 
@@ -78,7 +78,7 @@ namespace System.Reactive.Concurrency
             private readonly TaskPoolScheduler _scheduler;
             private readonly Func<IScheduler, TState, IDisposable> _action;
 
-            private IDisposable _cancel;
+            private MultipleAssignmentDisposableValue _cancel;
 
             public SlowlyScheduledWorkItem(TaskPoolScheduler scheduler, TState state, TimeSpan dueTime, Func<IScheduler, TState, IDisposable> action)
             {
@@ -87,27 +87,27 @@ namespace System.Reactive.Concurrency
                 _scheduler = scheduler;
 
                 var ct = new CancellationDisposable();
-                Disposable.SetSingle(ref _cancel, ct);
+                _cancel.Disposable = ct;
 
                 TaskHelpers.Delay(dueTime, ct.Token).ContinueWith(
                     (_, thisObject) =>
                     {
-                        var @this = (SlowlyScheduledWorkItem<TState>)thisObject;
+                        var @this = (SlowlyScheduledWorkItem<TState>)thisObject!;
 
-                        if (!Disposable.GetIsDisposed(ref @this._cancel))
+                        if (!@this._cancel.IsDisposed)
                         {
-                            Disposable.TrySetMultiple(ref @this._cancel, @this._action(@this._scheduler, @this._state));
+                            @this._cancel.Disposable = @this._action(@this._scheduler, @this._state);
                         }
                     },
                     this,
                     CancellationToken.None,
                     TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnRanToCompletion,
-                    scheduler._taskFactory.Scheduler);
+                    scheduler._taskFactory.Scheduler ?? TaskScheduler.Default);
             }
 
             public void Dispose()
             {
-                Disposable.TryDispose(ref _cancel);
+                _cancel.Dispose();
             }
         }
 
@@ -116,7 +116,7 @@ namespace System.Reactive.Concurrency
             private readonly TState _state;
             private readonly Action<TState, ICancelable> _action;
 
-            private IDisposable _cancel;
+            private SingleAssignmentDisposableValue _cancel;
 
             public LongScheduledWorkItem(TaskPoolScheduler scheduler, TState state, Action<TState, ICancelable> action)
             {
@@ -126,7 +126,7 @@ namespace System.Reactive.Concurrency
                 scheduler._taskFactory.StartNew(
                     thisObject =>
                     {
-                        var @this = (LongScheduledWorkItem<TState>)thisObject;
+                        var @this = (LongScheduledWorkItem<TState>)thisObject!;
 
                         //
                         // Notice we don't check _cancel.IsDisposed. The contract for ISchedulerLongRunning
@@ -141,13 +141,13 @@ namespace System.Reactive.Concurrency
 
             public void Dispose()
             {
-                Disposable.TryDispose(ref _cancel);
+                _cancel.Dispose();
             }
 
-            public bool IsDisposed => Disposable.GetIsDisposed(ref _cancel);
+            public bool IsDisposed => _cancel.IsDisposed;
         }
 
-        private static readonly Lazy<TaskPoolScheduler> LazyInstance = new Lazy<TaskPoolScheduler>(() => new TaskPoolScheduler(new TaskFactory(TaskScheduler.Default)));
+        private static readonly Lazy<TaskPoolScheduler> LazyInstance = new(static () => new TaskPoolScheduler(new TaskFactory(TaskScheduler.Default)));
         private readonly TaskFactory _taskFactory;
 
         /// <summary>
@@ -272,8 +272,8 @@ namespace System.Reactive.Concurrency
             private readonly TimeSpan _period;
             private readonly TaskFactory _taskFactory;
             private readonly Func<TState, TState> _action;
-            private readonly AsyncLock _gate = new AsyncLock();
-            private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+            private readonly AsyncLock _gate = new();
+            private readonly CancellationTokenSource _cts = new();
 
             public PeriodicallyScheduledWorkItem(TState state, TimeSpan period, Func<TState, TState> action, TaskFactory taskFactory)
             {
@@ -294,20 +294,20 @@ namespace System.Reactive.Concurrency
             private void MoveNext()
             {
                 TaskHelpers.Delay(_period, _cts.Token).ContinueWith(
-                    (_, thisObject) =>
+                    static (_, thisObject) =>
                     {
-                        var @this = (PeriodicallyScheduledWorkItem<TState>)thisObject;
+                        var @this = (PeriodicallyScheduledWorkItem<TState>)thisObject!;
 
                         @this.MoveNext();
 
                         @this._gate.Wait(
                             @this,
-                            closureThis => closureThis._state = closureThis._action(closureThis._state));
+                            static closureThis => closureThis._state = closureThis._action(closureThis._state));
                     },
                     this,
                     CancellationToken.None,
                     TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnRanToCompletion,
-                    _taskFactory.Scheduler
+                    _taskFactory.Scheduler ?? TaskScheduler.Default
                 );
             }
         }

@@ -1,10 +1,9 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,6 +11,13 @@ namespace System.Linq
 {
     public static partial class AsyncEnumerable
     {
+        /// <summary>
+        /// Inverts the order of the elements in a sequence.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of source.</typeparam>
+        /// <param name="source">An async-enumerable sequence of values to reverse.</param>
+        /// <returns>An async-enumerable sequence whose elements correspond to those of the input sequence in reverse order.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         public static IAsyncEnumerable<TSource> Reverse<TSource>(this IAsyncEnumerable<TSource> source)
         {
             if (source == null)
@@ -29,8 +35,6 @@ namespace System.Linq
 
             public ReverseAsyncIterator(IAsyncEnumerable<TSource> source)
             {
-                Debug.Assert(source != null);
-
                 _source = source;
             }
 
@@ -42,9 +46,7 @@ namespace System.Linq
                 // checking that has its own cost, so just use this approach for all types.
                 for (int i = 0, j = array.Length - 1; i < j; ++i, --j)
                 {
-                    var temp = array[i];
-                    array[i] = array[j];
-                    array[j] = temp;
+                    (array[j], array[i]) = (array[i], array[j]);
                 }
 
                 return array;
@@ -67,7 +69,7 @@ namespace System.Linq
                         return listProv.GetCountAsync(true, cancellationToken);
                     }
 
-                    if (!(_source is ICollection<TSource>) && !(_source is ICollection))
+                    if (_source is not ICollection<TSource> && _source is not ICollection)
                     {
                         return new ValueTask<int>(-1);
                     }

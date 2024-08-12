@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Disposables;
@@ -12,7 +12,7 @@ namespace System.Reactive.Concurrency
     /// </summary>
     public sealed class NewThreadScheduler : LocalScheduler, ISchedulerLongRunning, ISchedulerPeriodic
     {
-        private static readonly Lazy<NewThreadScheduler> Instance = new Lazy<NewThreadScheduler>(() => new NewThreadScheduler());
+        private static readonly Lazy<NewThreadScheduler> Instance = new(static () => new NewThreadScheduler());
 
         private readonly Func<ThreadStart, Thread> _threadFactory;
 
@@ -29,7 +29,6 @@ namespace System.Reactive.Concurrency
         /// </summary>
         public static NewThreadScheduler Default => Instance.Value;
 
-#if !NO_THREAD
         /// <summary>
         /// Creates an object that schedules each unit of work on a separate thread.
         /// </summary>
@@ -37,10 +36,6 @@ namespace System.Reactive.Concurrency
         /// <exception cref="ArgumentNullException"><paramref name="threadFactory"/> is <c>null</c>.</exception>
         public NewThreadScheduler(Func<ThreadStart, Thread> threadFactory)
         {
-#else
-        private NewThreadScheduler(Func<ThreadStart, Thread> threadFactory)
-        {
-#endif
             _threadFactory = threadFactory ?? throw new ArgumentNullException(nameof(threadFactory));
         }
 
@@ -135,7 +130,7 @@ namespace System.Reactive.Concurrency
             private readonly TimeSpan _period;
             private readonly Func<TState, TState> _action;
 
-            private readonly object _cancel = new object();
+            private readonly object _cancel = new();
             private volatile bool _done;
 
             private TState _state;

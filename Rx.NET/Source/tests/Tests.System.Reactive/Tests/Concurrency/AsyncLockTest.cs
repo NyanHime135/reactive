@@ -1,24 +1,26 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
 using System.Reactive.Concurrency;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+using Assert = Xunit.Assert;
 
 namespace ReactiveTests.Tests
 {
-
+    [TestClass]
     public class AsyncLockTest
     {
-        [Fact]
+        [TestMethod]
         public void Wait_ArgumentChecking()
         {
             var asyncLock = new AsyncLock();
             Assert.Throws<ArgumentNullException>(() => asyncLock.Wait(null));
         }
 
-        [Fact]
+        [TestMethod]
         public void Wait_Graceful()
         {
             var ok = false;
@@ -26,7 +28,7 @@ namespace ReactiveTests.Tests
             Assert.True(ok);
         }
 
-        [Fact]
+        [TestMethod]
         public void Wait_Fail()
         {
             var l = new AsyncLock();
@@ -46,7 +48,7 @@ namespace ReactiveTests.Tests
             l.Wait(() => { Assert.True(false); });
         }
 
-        [Fact]
+        [TestMethod]
         public void Wait_QueuesWork()
         {
             var l = new AsyncLock();
@@ -57,7 +59,7 @@ namespace ReactiveTests.Tests
             Assert.True(l2);
         }
 
-        [Fact]
+        [TestMethod]
         public void Dispose()
         {
             var l = new AsyncLock();

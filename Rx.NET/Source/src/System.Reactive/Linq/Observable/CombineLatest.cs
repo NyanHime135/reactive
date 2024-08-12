@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -24,13 +24,14 @@ namespace System.Reactive.Linq.ObservableImpl
             _resultSelector = resultSelector;
         }
 
-        protected override _ CreateSink(IObserver<TResult> observer) => new _(_resultSelector, observer);
+        protected override _ CreateSink(IObserver<TResult> observer) => new(_resultSelector, observer);
 
         protected override void Run(_ sink) => sink.Run(_first, _second);
 
         internal sealed class _ : IdentitySink<TResult>
         {
             private readonly Func<TFirst, TSecond, TResult> _resultSelector;
+            private readonly object _gate = new();
 
             public _(Func<TFirst, TSecond, TResult> resultSelector, IObserver<TResult> observer)
                 : base(observer)
@@ -38,32 +39,29 @@ namespace System.Reactive.Linq.ObservableImpl
                 _resultSelector = resultSelector;
             }
 
-            private object _gate;
-
-            private IDisposable _firstDisposable;
-            private IDisposable _secondDisposable;
+            private SingleAssignmentDisposableValue _firstDisposable;
+            private SingleAssignmentDisposableValue _secondDisposable;
 
             public void Run(IObservable<TFirst> first, IObservable<TSecond> second)
             {
-                _gate = new object();
-
                 var fstO = new FirstObserver(this);
                 var sndO = new SecondObserver(this);
 
-                fstO.Other = sndO;
-                sndO.Other = fstO;
+                fstO.SetOther(sndO);
+                sndO.SetOther(fstO);
 
-                Disposable.SetSingle(ref _firstDisposable, first.SubscribeSafe(fstO));
-                Disposable.SetSingle(ref _secondDisposable, second.SubscribeSafe(sndO));
+                _firstDisposable.Disposable = first.SubscribeSafe(fstO);
+                _secondDisposable.Disposable = second.SubscribeSafe(sndO);
             }
 
             protected override void Dispose(bool disposing)
             {
                 if (disposing)
                 {
-                    Disposable.TryDispose(ref _firstDisposable);
-                    Disposable.TryDispose(ref _secondDisposable);
+                    _firstDisposable.Dispose();
+                    _secondDisposable.Dispose();
                 }
+
                 base.Dispose(disposing);
             }
 
@@ -75,12 +73,13 @@ namespace System.Reactive.Linq.ObservableImpl
                 public FirstObserver(_ parent)
                 {
                     _parent = parent;
+                    _other = default!; // NB: Will be set by SetOther.
                 }
 
-                public SecondObserver Other { set { _other = value; } }
+                public void SetOther(SecondObserver other) { _other = other; }
 
                 public bool HasValue { get; private set; }
-                public TFirst Value { get; private set; }
+                public TFirst? Value { get; private set; }
                 public bool Done { get; private set; }
 
                 public void OnNext(TFirst value)
@@ -92,10 +91,10 @@ namespace System.Reactive.Linq.ObservableImpl
 
                         if (_other.HasValue)
                         {
-                            var res = default(TResult);
+                            TResult res;
                             try
                             {
-                                res = _parent._resultSelector(value, _other.Value);
+                                res = _parent._resultSelector(value, _other.Value!);
                             }
                             catch (Exception ex)
                             {
@@ -132,7 +131,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         }
                         else
                         {
-                            Disposable.TryDispose(ref _parent._firstDisposable);
+                            _parent._firstDisposable.Dispose();
                         }
                     }
                 }
@@ -146,12 +145,13 @@ namespace System.Reactive.Linq.ObservableImpl
                 public SecondObserver(_ parent)
                 {
                     _parent = parent;
+                    _other = default!; // NB: Will be set by SetOther.
                 }
 
-                public FirstObserver Other { set { _other = value; } }
+                public void SetOther(FirstObserver other) { _other = other; }
 
                 public bool HasValue { get; private set; }
-                public TSecond Value { get; private set; }
+                public TSecond? Value { get; private set; }
                 public bool Done { get; private set; }
 
                 public void OnNext(TSecond value)
@@ -163,10 +163,10 @@ namespace System.Reactive.Linq.ObservableImpl
 
                         if (_other.HasValue)
                         {
-                            var res = default(TResult);
+                            TResult res;
                             try
                             {
-                                res = _parent._resultSelector(_other.Value, value);
+                                res = _parent._resultSelector(_other.Value!, value);
                             }
                             catch (Exception ex)
                             {
@@ -203,7 +203,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         }
                         else
                         {
-                            Disposable.TryDispose(ref _parent._secondDisposable);
+                            _parent._secondDisposable.Dispose();
                         }
                     }
                 }
@@ -262,7 +262,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
             if (_hasValueAll)
             {
-                var res = default(TResult);
+                TResult res;
                 try
                 {
                     res = GetResult();
@@ -328,7 +328,7 @@ namespace System.Reactive.Linq.ObservableImpl
         private readonly object _gate;
         private readonly ICombineLatest _parent;
         private readonly int _index;
-        private T _value;
+        private T? _value;
 
         public CombineLatestObserver(object gate, ICombineLatest parent, int index)
         {
@@ -337,7 +337,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _index = index;
         }
 
-        public T Value => _value;
+        public T? Value => _value;
 
         public override void OnNext(T value)
         {
@@ -385,24 +385,30 @@ namespace System.Reactive.Linq.ObservableImpl
             _resultSelector = resultSelector;
         }
 
-        protected override _ CreateSink(IObserver<TResult> observer) => new _(_resultSelector, observer);
+        protected override _ CreateSink(IObserver<TResult> observer) => new(_resultSelector, observer);
 
         protected override void Run(_ sink) => sink.Run(_sources);
 
         internal sealed class _ : IdentitySink<TResult>
         {
+            private readonly object _gate = new();
             private readonly Func<IList<TSource>, TResult> _resultSelector;
 
             public _(Func<IList<TSource>, TResult> resultSelector, IObserver<TResult> observer)
                 : base(observer)
             {
                 _resultSelector = resultSelector;
+
+                // NB: These will be set in Run before getting used.
+                _hasValue = null!;
+                _values = null!;
+                _isDone = null!;
+                _subscriptions = null!;
             }
 
-            private object _gate;
             private bool[] _hasValue;
             private bool _hasValueAll;
-            private List<TSource> _values;
+            private TSource[] _values;
             private bool[] _isDone;
             private IDisposable[] _subscriptions;
 
@@ -415,17 +421,11 @@ namespace System.Reactive.Linq.ObservableImpl
                 _hasValue = new bool[N];
                 _hasValueAll = false;
 
-                _values = new List<TSource>(N);
-                for (var i = 0; i < N; i++)
-                {
-                    _values.Add(default);
-                }
+                _values = new TSource[N];
 
                 _isDone = new bool[N];
 
                 _subscriptions = new IDisposable[N];
-
-                _gate = new object();
 
                 for (var i = 0; i < N; i++)
                 {
@@ -450,7 +450,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     if (_hasValueAll || (_hasValueAll = _hasValue.All()))
                     {
-                        var res = default(TResult);
+                        TResult res;
                         try
                         {
                             res = _resultSelector(new ReadOnlyCollection<TSource>(_values));

@@ -1,8 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
-#if !NO_REMOTING
+#if HAS_REMOTING
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.Remoting.Lifetime;
@@ -71,11 +71,7 @@ namespace System.Reactive.Linq
             return source.Provider.CreateQuery<TSource>(
                 Expression.Call(
                     null,
-#if CRIPPLED_REFLECTION
-                    InfoOf(() => RemotingObservable.Remotable<TSource>(default(IQbservable<TSource>))),
-#else
                     ((MethodInfo)MethodBase.GetCurrentMethod()).MakeGenericMethod(typeof(TSource)),
-#endif
                     source.Expression
                 )
             );
@@ -100,23 +96,13 @@ namespace System.Reactive.Linq
             return source.Provider.CreateQuery<TSource>(
                 Expression.Call(
                     null,
-#if CRIPPLED_REFLECTION
-                    InfoOf(() => RemotingObservable.Remotable<TSource>(default(IQbservable<TSource>), default(ILease))),
-#else
                     ((MethodInfo)MethodBase.GetCurrentMethod()).MakeGenericMethod(typeof(TSource)),
-#endif
+#pragma warning restore IL2060
                     source.Expression,
                     Expression.Constant(lease, typeof(ILease))
                 )
             );
         }
-
-#if CRIPPLED_REFLECTION
-        internal static MethodInfo InfoOf<R>(Expression<Func<R>> f)
-        {
-            return ((MethodCallExpression)f.Body).Method;
-        }
-#endif
 
         #endregion
     }

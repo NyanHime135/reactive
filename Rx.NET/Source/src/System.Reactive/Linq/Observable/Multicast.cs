@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Disposables;
@@ -20,13 +20,13 @@ namespace System.Reactive.Linq.ObservableImpl
             _selector = selector;
         }
 
-        protected override _ CreateSink(IObserver<TResult> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<TResult> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(this);
 
         internal sealed class _ : IdentitySink<TResult>
         {
-            private IDisposable _connection;
+            private SingleAssignmentDisposableValue _connection;
 
             public _(IObserver<TResult> observer)
                 : base(observer)
@@ -35,8 +35,9 @@ namespace System.Reactive.Linq.ObservableImpl
 
             public void Run(Multicast<TSource, TIntermediate, TResult> parent)
             {
-                var observable = default(IObservable<TResult>);
-                var connectable = default(IConnectableObservable<TIntermediate>);
+                IObservable<TResult> observable;
+                IConnectableObservable<TIntermediate> connectable;
+
                 try
                 {
                     var subject = parent._subjectSelector();
@@ -50,15 +51,16 @@ namespace System.Reactive.Linq.ObservableImpl
                 }
 
                 Run(observable);
-                Disposable.SetSingle(ref _connection, connectable.Connect());
+                _connection.Disposable = connectable.Connect();
             }
 
             protected override void Dispose(bool disposing)
             {
                 if (disposing)
                 {
-                    Disposable.TryDispose(ref _connection);
+                    _connection.Dispose();
                 }
+                
                 base.Dispose(disposing);
             }
         }

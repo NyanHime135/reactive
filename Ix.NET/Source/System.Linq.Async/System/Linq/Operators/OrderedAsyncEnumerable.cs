@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections;
@@ -87,11 +87,7 @@ namespace System.Linq
 
             if (count == 0)
             {
-#if NO_ARRAY_EMPTY
-                return EmptyArray<TElement>.Value;
-#else
-                return Array.Empty<TElement>();
-#endif
+                return [];
             }
 
             var array = elements.Array;
@@ -116,11 +112,7 @@ namespace System.Linq
 
             if (count <= minIndexInclusive)
             {
-#if NO_ARRAY_EMPTY
-                return EmptyArray<TElement>.Value;
-#else
-                return Array.Empty<TElement>();
-#endif
+                return [];
             }
 
             if (count <= maxIndexInclusive)
@@ -136,7 +128,7 @@ namespace System.Linq
 
                 var element = await sorter.ElementAt(array, count, minIndexInclusive).ConfigureAwait(false);
 
-                return new TElement[] { element };
+                return [element];
             }
 
             var map = await SortedMap(array, count, minIndexInclusive, maxIndexInclusive, cancellationToken).ConfigureAwait(false);
@@ -159,7 +151,7 @@ namespace System.Linq
 
             if (count == 0)
             {
-                return new List<TElement>(capacity: 0);
+                return [];
             }
 
             var array = elements.Array;
@@ -184,7 +176,7 @@ namespace System.Linq
 
             if (count <= minIndexInclusive)
             {
-                return new List<TElement>(0);
+                return [];
             }
 
             if (count <= maxIndexInclusive)
@@ -200,7 +192,7 @@ namespace System.Linq
 
                 var element = await sorter.ElementAt(array, count, minIndexInclusive).ConfigureAwait(false);
 
-                return new List<TElement>(1) { element };
+                return [element];
             }
 
             var map = await SortedMap(array, count, minIndexInclusive, maxIndexInclusive, cancellationToken).ConfigureAwait(false);
@@ -651,9 +643,7 @@ namespace System.Linq
 
                     if (i < j)
                     {
-                        var temp = map[i];
-                        map[i] = map[j];
-                        map[j] = temp;
+                        (map[j], map[i]) = (map[i], map[j]);
                     }
 
                     i++;
@@ -720,9 +710,7 @@ namespace System.Linq
 
                     if (i < j)
                     {
-                        var temp = map[i];
-                        map[i] = map[j];
-                        map[j] = temp;
+                        (map[j], map[i]) = (map[i], map[j]);
                     }
 
                     i++;

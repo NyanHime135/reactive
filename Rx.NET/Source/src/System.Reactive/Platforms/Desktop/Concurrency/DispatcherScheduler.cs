@@ -1,15 +1,15 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
-#if !WINDOWS
+#if HAS_WPF
 using System.Reactive.Disposables;
 using System.Threading;
 
 namespace System.Reactive.Concurrency
 {
     /// <summary>
-    /// Represents an object that schedules units of work on a <see cref="Windows.Threading.Dispatcher"/>.
+    /// Represents an object that schedules units of work on a <see cref="System.Windows.Threading.Dispatcher"/>.
     /// </summary>
     /// <remarks>
     /// This scheduler type is typically used indirectly through the <see cref="Linq.DispatcherObservable.ObserveOnDispatcher{TSource}(IObservable{TSource})"/> and <see cref="Linq.DispatcherObservable.SubscribeOnDispatcher{TSource}(IObservable{TSource})"/> methods that use the Dispatcher on the calling thread.
@@ -17,61 +17,57 @@ namespace System.Reactive.Concurrency
     public class DispatcherScheduler : LocalScheduler, ISchedulerPeriodic
     {
         /// <summary>
-        /// Gets the scheduler that schedules work on the current <see cref="Windows.Threading.Dispatcher"/>.
+        /// Gets the scheduler that schedules work on the current <see cref="System.Windows.Threading.Dispatcher"/>.
         /// </summary>
         [Obsolete(Constants_WindowsThreading.OBSOLETE_INSTANCE_PROPERTY)]
-        public static DispatcherScheduler Instance => new DispatcherScheduler(Windows.Threading.Dispatcher.CurrentDispatcher);
+        public static DispatcherScheduler Instance => new(System.Windows.Threading.Dispatcher.CurrentDispatcher);
 
         /// <summary>
-        /// Gets the scheduler that schedules work on the <see cref="Windows.Threading.Dispatcher"/> for the current thread.
+        /// Gets the scheduler that schedules work on the <see cref="System.Windows.Threading.Dispatcher"/> for the current thread.
         /// </summary>
         public static DispatcherScheduler Current
         {
             get
             {
-                var dispatcher = Windows.Threading.Dispatcher.FromThread(Thread.CurrentThread);
-                if (dispatcher == null)
-                {
-                    throw new InvalidOperationException(Strings_WindowsThreading.NO_DISPATCHER_CURRENT_THREAD);
-                }
-
+                var dispatcher = System.Windows.Threading.Dispatcher.FromThread(Thread.CurrentThread)
+                    ?? throw new InvalidOperationException(Strings_WindowsThreading.NO_DISPATCHER_CURRENT_THREAD);
                 return new DispatcherScheduler(dispatcher);
             }
         }
 
         /// <summary>
-        /// Constructs a <see cref="DispatcherScheduler"/> that schedules units of work on the given <see cref="Windows.Threading.Dispatcher"/>.
+        /// Constructs a <see cref="DispatcherScheduler"/> that schedules units of work on the given <see cref="System.Windows.Threading.Dispatcher"/>.
         /// </summary>
         /// <param name="dispatcher"><see cref="DispatcherScheduler"/> to schedule work on.</param>
         /// <exception cref="ArgumentNullException"><paramref name="dispatcher"/> is <c>null</c>.</exception>
-        public DispatcherScheduler(Windows.Threading.Dispatcher dispatcher)
+        public DispatcherScheduler(System.Windows.Threading.Dispatcher dispatcher)
         {
             Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
-            Priority = Windows.Threading.DispatcherPriority.Normal;
+            Priority = System.Windows.Threading.DispatcherPriority.Normal;
 
         }
 
         /// <summary>
-        /// Constructs a <see cref="DispatcherScheduler"/> that schedules units of work on the given <see cref="Windows.Threading.Dispatcher"/> at the given priority.
+        /// Constructs a <see cref="DispatcherScheduler"/> that schedules units of work on the given <see cref="System.Windows.Threading.Dispatcher"/> at the given priority.
         /// </summary>
         /// <param name="dispatcher"><see cref="DispatcherScheduler"/> to schedule work on.</param>
         /// <param name="priority">Priority at which units of work are scheduled.</param>
         /// <exception cref="ArgumentNullException"><paramref name="dispatcher"/> is <c>null</c>.</exception>
-        public DispatcherScheduler(Windows.Threading.Dispatcher dispatcher, Windows.Threading.DispatcherPriority priority)
+        public DispatcherScheduler(System.Windows.Threading.Dispatcher dispatcher, System.Windows.Threading.DispatcherPriority priority)
         {
             Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
             Priority = priority;
         }
 
         /// <summary>
-        /// Gets the <see cref="Windows.Threading.Dispatcher"/> associated with the <see cref="DispatcherScheduler"/>.
+        /// Gets the <see cref="System.Windows.Threading.Dispatcher"/> associated with the <see cref="DispatcherScheduler"/>.
         /// </summary>
-        public Windows.Threading.Dispatcher Dispatcher { get; }
+        public System.Windows.Threading.Dispatcher Dispatcher { get; }
 
         /// <summary>
         /// Gets the priority at which work items will be dispatched.
         /// </summary>
-        public Windows.Threading.DispatcherPriority Priority { get; }
+        public System.Windows.Threading.DispatcherPriority Priority { get; }
 
         /// <summary>
         /// Schedules an action to be executed on the dispatcher.
@@ -105,7 +101,7 @@ namespace System.Reactive.Concurrency
         }
 
         /// <summary>
-        /// Schedules an action to be executed after <paramref name="dueTime"/> on the dispatcher, using a <see cref="Windows.Threading.DispatcherTimer"/> object.
+        /// Schedules an action to be executed after <paramref name="dueTime"/> on the dispatcher, using a <see cref="System.Windows.Threading.DispatcherTimer"/> object.
         /// </summary>
         /// <typeparam name="TState">The type of the state passed to the scheduled action.</typeparam>
         /// <param name="state">State passed to the action to be executed.</param>
@@ -133,7 +129,7 @@ namespace System.Reactive.Concurrency
         {
             var d = new MultipleAssignmentDisposable();
 
-            var timer = new Windows.Threading.DispatcherTimer(Priority, Dispatcher);
+            var timer = new System.Windows.Threading.DispatcherTimer(Priority, Dispatcher);
 
             timer.Tick += (s, e) =>
             {
@@ -147,7 +143,7 @@ namespace System.Reactive.Concurrency
                     finally
                     {
                         t.Stop();
-                        action = null;
+                        action = static (s, t) => Disposable.Empty;
                     }
                 }
             };
@@ -161,7 +157,7 @@ namespace System.Reactive.Concurrency
                 if (t != null)
                 {
                     t.Stop();
-                    action = (_, __) => Disposable.Empty;
+                    action = static (s, t) => Disposable.Empty;
                 }
             });
 
@@ -169,7 +165,7 @@ namespace System.Reactive.Concurrency
         }
 
         /// <summary>
-        /// Schedules a periodic piece of work on the dispatcher, using a <see cref="Windows.Threading.DispatcherTimer"/> object.
+        /// Schedules a periodic piece of work on the dispatcher, using a <see cref="System.Windows.Threading.DispatcherTimer"/> object.
         /// </summary>
         /// <typeparam name="TState">The type of the state passed to the scheduled action.</typeparam>
         /// <param name="state">Initial state passed to the action upon the first iteration.</param>
@@ -190,7 +186,7 @@ namespace System.Reactive.Concurrency
                 throw new ArgumentNullException(nameof(action));
             }
 
-            var timer = new Windows.Threading.DispatcherTimer(Priority, Dispatcher);
+            var timer = new System.Windows.Threading.DispatcherTimer(Priority, Dispatcher);
 
             var state1 = state;
 
@@ -208,7 +204,7 @@ namespace System.Reactive.Concurrency
                 if (t != null)
                 {
                     t.Stop();
-                    action = _ => _;
+                    action = static _ => _;
                 }
             });
         }

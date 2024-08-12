@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 namespace System.Reactive.Linq.ObservableImpl
@@ -13,7 +13,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _source = source;
         }
 
-        protected override _ CreateSink(IObserver<double> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<double> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
@@ -54,7 +54,14 @@ namespace System.Reactive.Linq.ObservableImpl
                 }
                 else
                 {
-                    ForwardOnError(new InvalidOperationException(Strings_Linq.NO_ELEMENTS));
+                    try
+                    {
+                        throw new InvalidOperationException(Strings_Linq.NO_ELEMENTS);
+                    }
+                    catch (Exception e)
+                    {
+                        ForwardOnError(e);
+                    }
                 }
             }
         }
@@ -69,7 +76,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _source = source;
         }
 
-        protected override _ CreateSink(IObserver<float> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<float> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
@@ -110,7 +117,14 @@ namespace System.Reactive.Linq.ObservableImpl
                 }
                 else
                 {
-                    ForwardOnError(new InvalidOperationException(Strings_Linq.NO_ELEMENTS));
+                    try
+                    {
+                        throw new InvalidOperationException(Strings_Linq.NO_ELEMENTS);
+                    }
+                    catch (Exception e)
+                    {
+                        ForwardOnError(e);
+                    }
                 }
             }
         }
@@ -125,7 +139,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _source = source;
         }
 
-        protected override _ CreateSink(IObserver<decimal> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<decimal> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
@@ -166,7 +180,14 @@ namespace System.Reactive.Linq.ObservableImpl
                 }
                 else
                 {
-                    ForwardOnError(new InvalidOperationException(Strings_Linq.NO_ELEMENTS));
+                    try
+                    {
+                        throw new InvalidOperationException(Strings_Linq.NO_ELEMENTS);
+                    }
+                    catch (Exception e)
+                    {
+                        ForwardOnError(e);
+                    }
                 }
             }
         }
@@ -181,7 +202,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _source = source;
         }
 
-        protected override _ CreateSink(IObserver<double> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<double> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
@@ -222,7 +243,14 @@ namespace System.Reactive.Linq.ObservableImpl
                 }
                 else
                 {
-                    ForwardOnError(new InvalidOperationException(Strings_Linq.NO_ELEMENTS));
+                    try
+                    {
+                        throw new InvalidOperationException(Strings_Linq.NO_ELEMENTS);
+                    }
+                    catch (Exception e)
+                    {
+                        ForwardOnError(e);
+                    }
                 }
             }
         }
@@ -237,7 +265,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _source = source;
         }
 
-        protected override _ CreateSink(IObserver<double> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<double> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
@@ -278,7 +306,14 @@ namespace System.Reactive.Linq.ObservableImpl
                 }
                 else
                 {
-                    ForwardOnError(new InvalidOperationException(Strings_Linq.NO_ELEMENTS));
+                    try
+                    {
+                        throw new InvalidOperationException(Strings_Linq.NO_ELEMENTS);
+                    }
+                    catch (Exception e)
+                    {
+                        ForwardOnError(e);
+                    }
                 }
             }
         }
@@ -293,7 +328,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _source = source;
         }
 
-        protected override _ CreateSink(IObserver<double?> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<double?> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
@@ -353,7 +388,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _source = source;
         }
 
-        protected override _ CreateSink(IObserver<float?> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<float?> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
@@ -413,7 +448,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _source = source;
         }
 
-        protected override _ CreateSink(IObserver<decimal?> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<decimal?> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
@@ -473,7 +508,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _source = source;
         }
 
-        protected override _ CreateSink(IObserver<double?> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<double?> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
@@ -533,7 +568,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _source = source;
         }
 
-        protected override _ CreateSink(IObserver<double?> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<double?> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 

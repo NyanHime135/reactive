@@ -1,6 +1,10 @@
-// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
+
+#nullable disable
+
+#pragma warning disable CS0436 // Interface definitions conflict with .NET Runtime. This brings its own older definitions of various async interfaces.
 
 using System;
 using System.Collections;
@@ -13,7 +17,7 @@ namespace FasterLinq
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
             var N = 4;
 
@@ -806,12 +810,9 @@ namespace System.Labs.Linq
 
             try
             {
-                while (true)
+                while (await e.MoveNextAsync().ConfigureAwait(false))
                 {
-                    while (await e.MoveNextAsync().ConfigureAwait(false))
-                    {
-                        res = await aggregate(res, e.Current).ConfigureAwait(false);
-                    }
+                    res = await aggregate(res, e.Current).ConfigureAwait(false);
                 }
             }
             finally

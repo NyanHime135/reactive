@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Concurrent;
@@ -13,11 +13,11 @@ namespace System.Reactive.Linq.ObservableImpl
     internal sealed class GetEnumerator<TSource> : IEnumerator<TSource>, IObserver<TSource>
     {
         private readonly ConcurrentQueue<TSource> _queue;
-        private TSource _current;
-        private Exception _error;
+        private TSource? _current;
+        private Exception? _error;
         private bool _done;
         private bool _disposed;
-        private IDisposable _subscription;
+        private SingleAssignmentDisposableValue _subscription;
 
         private readonly SemaphoreSlim _gate;
 
@@ -32,7 +32,7 @@ namespace System.Reactive.Linq.ObservableImpl
             //
             // [OK] Use of unsafe Subscribe: non-pretentious exact mirror with the dual GetEnumerator method.
             //
-            Disposable.TrySetSingle(ref _subscription, source.Subscribe/*Unsafe*/(this));
+            _subscription.Disposable = source.Subscribe/*Unsafe*/(this);
             return this;
         }
 
@@ -45,14 +45,14 @@ namespace System.Reactive.Linq.ObservableImpl
         public void OnError(Exception error)
         {
             _error = error;
-            Disposable.TryDispose(ref _subscription);
+            _subscription.Dispose();
             _gate.Release();
         }
 
         public void OnCompleted()
         {
             _done = true;
-            Disposable.TryDispose(ref _subscription);
+            _subscription.Dispose();
             _gate.Release();
         }
 
@@ -70,7 +70,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 return true;
             }
 
-            _error.ThrowIfNotNull();
+            _error?.Throw();
 
             Debug.Assert(_done);
 
@@ -78,13 +78,13 @@ namespace System.Reactive.Linq.ObservableImpl
             return false;
         }
 
-        public TSource Current => _current;
+        public TSource Current => _current!; // NB: Only called after MoveNext returns true and assigns a value.
 
-        object Collections.IEnumerator.Current => _current;
+        object Collections.IEnumerator.Current => _current!;
 
         public void Dispose()
         {
-            Disposable.TryDispose(ref _subscription);
+            _subscription.Dispose();
 
             _disposed = true;
             _gate.Release();

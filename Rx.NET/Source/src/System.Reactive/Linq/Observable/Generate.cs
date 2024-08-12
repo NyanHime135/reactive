@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -26,7 +26,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _scheduler = scheduler;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_scheduler);
 
@@ -50,16 +50,16 @@ namespace System.Reactive.Linq.ObservableImpl
                 private TState _state;
                 private bool _first;
 
-                public void Run(IScheduler _scheduler)
+                public void Run(IScheduler scheduler)
                 {
-                    var longRunning = _scheduler.AsLongRunning();
+                    var longRunning = scheduler.AsLongRunning();
                     if (longRunning != null)
                     {
-                        SetUpstream(longRunning.ScheduleLongRunning(this, (@this, c) => @this.Loop(c)));
+                        SetUpstream(longRunning.ScheduleLongRunning(this, static (@this, c) => @this.Loop(c)));
                     }
                     else
                     {
-                        SetUpstream(_scheduler.Schedule(this, (@this, a) => @this.LoopRec(a)));
+                        SetUpstream(scheduler.Schedule(this, static (@this, a) => @this.LoopRec(a)));
                     }
                 }
 
@@ -67,8 +67,9 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     while (!cancel.IsDisposed)
                     {
-                        var hasResult = false;
+                        bool hasResult;
                         var result = default(TResult);
+
                         try
                         {
                             if (_first)
@@ -95,7 +96,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                         if (hasResult)
                         {
-                            ForwardOnNext(result);
+                            ForwardOnNext(result!);
                         }
                         else
                         {
@@ -111,8 +112,9 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 private void LoopRec(Action<_> recurse)
                 {
-                    var hasResult = false;
+                    bool hasResult;
                     var result = default(TResult);
+                    
                     try
                     {
                         if (_first)
@@ -139,7 +141,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     if (hasResult)
                     {
-                        ForwardOnNext(result);
+                        ForwardOnNext(result!);
                         recurse(this);
                     }
                     else
@@ -169,7 +171,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _scheduler = scheduler;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_scheduler, _initialState);
 
@@ -193,21 +195,31 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 private bool _first;
                 private bool _hasResult;
-                private TResult _result;
+                private TResult? _result;
+
+                private MultipleAssignmentDisposableValue _timerDisposable;
 
                 public void Run(IScheduler outerScheduler, TState initialState)
                 {
-                    SetUpstream(outerScheduler.Schedule((@this: this, initialState), (scheduler, tuple) => tuple.@this.InvokeRec(scheduler, tuple.initialState)));
+                    var timer = new SingleAssignmentDisposable();
+                    _timerDisposable.Disposable = timer;
+                    timer.Disposable = outerScheduler.Schedule((@this: this, initialState), static (scheduler, tuple) => tuple.@this.InvokeRec(scheduler, tuple.initialState));
+                }
+
+                protected override void Dispose(bool disposing)
+                {
+                    _timerDisposable.Dispose();
+                    base.Dispose(disposing);
                 }
 
                 private IDisposable InvokeRec(IScheduler self, TState state)
                 {
-                    var time = default(DateTimeOffset);
-
                     if (_hasResult)
                     {
-                        ForwardOnNext(_result);
+                        ForwardOnNext(_result!);
                     }
+
+                    var time = default(DateTimeOffset);
 
                     try
                     {
@@ -240,7 +252,11 @@ namespace System.Reactive.Linq.ObservableImpl
                         return Disposable.Empty;
                     }
 
-                    return self.Schedule((@this: this, state), time, (scheduler, tuple) => tuple.@this.InvokeRec(scheduler, tuple.state));
+                    var timer = new SingleAssignmentDisposable();
+                    _timerDisposable.Disposable = timer;
+                    timer.Disposable = self.Schedule((@this: this, state), time, static (scheduler, tuple) => tuple.@this.InvokeRec(scheduler, tuple.state));
+
+                    return Disposable.Empty;
                 }
             }
         }
@@ -264,7 +280,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _scheduler = scheduler;
             }
 
-            protected override _ CreateSink(IObserver<TResult> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TResult> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_scheduler, _initialState);
 
@@ -288,21 +304,31 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 private bool _first;
                 private bool _hasResult;
-                private TResult _result;
+                private TResult? _result;
+
+                private MultipleAssignmentDisposableValue _timerDisposable;
 
                 public void Run(IScheduler outerScheduler, TState initialState)
                 {
-                    SetUpstream(outerScheduler.Schedule((@this: this, initialState), (scheduler, tuple) => tuple.@this.InvokeRec(scheduler, tuple.initialState)));
+                    var timer = new SingleAssignmentDisposable();
+                    _timerDisposable.Disposable = timer;
+                    timer.Disposable = outerScheduler.Schedule((@this: this, initialState), static (scheduler, tuple) => tuple.@this.InvokeRec(scheduler, tuple.initialState));
+                }
+
+                protected override void Dispose(bool disposing)
+                {
+                    _timerDisposable.Dispose();
+                    base.Dispose(disposing);
                 }
 
                 private IDisposable InvokeRec(IScheduler self, TState state)
                 {
-                    var time = default(TimeSpan);
-
                     if (_hasResult)
                     {
-                        ForwardOnNext(_result);
+                        ForwardOnNext(_result!);
                     }
+
+                    var time = default(TimeSpan);
 
                     try
                     {
@@ -335,10 +361,13 @@ namespace System.Reactive.Linq.ObservableImpl
                         return Disposable.Empty;
                     }
 
-                    return self.Schedule((@this: this, state), time, (scheduler, tuple) => tuple.@this.InvokeRec(scheduler, tuple.state));
+                    var timer = new SingleAssignmentDisposable();
+                    _timerDisposable.Disposable = timer;
+                    timer.Disposable = self.Schedule((@this: this, state), time, static (scheduler, tuple) => tuple.@this.InvokeRec(scheduler, tuple.state));
+
+                    return Disposable.Empty;
                 }
             }
         }
     }
 }
-

@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.ComponentModel;
@@ -12,7 +12,7 @@ namespace System.Reactive.Concurrency
     /// <seealso cref="Scheduler.CurrentThread">Singleton instance of this type exposed through this static property.</seealso>
     public sealed class CurrentThreadScheduler : LocalScheduler
     {
-        private static readonly Lazy<CurrentThreadScheduler> StaticInstance = new Lazy<CurrentThreadScheduler>(() => new CurrentThreadScheduler());
+        private static readonly Lazy<CurrentThreadScheduler> StaticInstance = new(() => new CurrentThreadScheduler());
 
         private CurrentThreadScheduler()
         {
@@ -24,17 +24,17 @@ namespace System.Reactive.Concurrency
         public static CurrentThreadScheduler Instance => StaticInstance.Value;
 
         [ThreadStatic]
-        private static SchedulerQueue<TimeSpan> _threadLocalQueue;
+        private static SchedulerQueue<TimeSpan>? _threadLocalQueue;
 
         [ThreadStatic]
-        private static IStopwatch _clock;
+        private static IStopwatch? _clock;
 
         [ThreadStatic]
         private static bool _running;
 
-        private static SchedulerQueue<TimeSpan> GetQueue() => _threadLocalQueue;
+        private static SchedulerQueue<TimeSpan>? GetQueue() => _threadLocalQueue;
 
-        private static void SetQueue(SchedulerQueue<TimeSpan> newQueue)
+        private static void SetQueue(SchedulerQueue<TimeSpan>? newQueue)
         {
             _threadLocalQueue = newQueue;
         }
@@ -43,10 +43,7 @@ namespace System.Reactive.Concurrency
         {
             get
             {
-                if (_clock == null)
-                {
-                    _clock = ConcurrencyAbstractionLayer.Current.StartStopwatch();
-                }
+                _clock ??= ConcurrencyAbstractionLayer.Current.StartStopwatch();
 
                 return _clock.Elapsed;
             }
@@ -55,7 +52,6 @@ namespace System.Reactive.Concurrency
         /// <summary>
         /// Gets a value that indicates whether the caller must call a Schedule method.
         /// </summary>
-        [Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic", Justification = "Now marked as obsolete.")]
         [EditorBrowsable(EditorBrowsableState.Never)]
         [Obsolete(Constants_Core.ObsoleteSchedulerequired)] // Preferring static method call over instance method call.
         public bool ScheduleRequired => IsScheduleRequired;
@@ -82,7 +78,7 @@ namespace System.Reactive.Concurrency
                 throw new ArgumentNullException(nameof(action));
             }
 
-            var queue = default(SchedulerQueue<TimeSpan>);
+            SchedulerQueue<TimeSpan>? queue;
 
             // There is no timed task and no task is currently running
             if (!_running)

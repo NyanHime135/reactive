@@ -1,8 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
-using System.Diagnostics;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Subjects;
@@ -160,7 +159,7 @@ namespace System.Reactive.Linq.ObservableImpl
 {
     internal sealed class FromEvent<TDelegate, TEventArgs> : ClassicEventProducer<TDelegate, TEventArgs>
     {
-        private readonly Func<Action<TEventArgs>, TDelegate> _conversion;
+        private readonly Func<Action<TEventArgs>, TDelegate>? _conversion;
 
         public FromEvent(Action<TDelegate> addHandler, Action<TDelegate> removeHandler, IScheduler scheduler)
             : base(addHandler, removeHandler, scheduler)
@@ -175,11 +174,11 @@ namespace System.Reactive.Linq.ObservableImpl
 
         protected override TDelegate GetHandler(Action<TEventArgs> onNext)
         {
-            var handler = default(TDelegate);
+            TDelegate handler;
 
             if (_conversion == null)
             {
-                handler = ReflectionUtils.CreateDelegate<TDelegate>(onNext, typeof(Action<TEventArgs>).GetMethod(nameof(Action<TEventArgs>.Invoke)));
+                handler = ReflectionUtils.CreateDelegate<TDelegate>(onNext, typeof(Action<TEventArgs>).GetMethod(nameof(Action<TEventArgs>.Invoke))!);
             }
             else
             {
@@ -204,11 +203,11 @@ namespace System.Reactive.Linq.ObservableImpl
         protected abstract TDelegate GetHandler(Action<TArgs> onNext);
         protected abstract IDisposable AddHandler(TDelegate handler);
 
-        private Session _session;
+        private Session? _session;
 
         protected override IDisposable Run(IObserver<TArgs> observer)
         {
-            var connection = default(IDisposable);
+            IDisposable connection;
 
             lock (_gate)
             {
@@ -220,10 +219,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 // the session will reach out to reset the _session field to null under the _gate
                 // lock. Future subscriptions will cause a new session to be created.
                 //
-                if (_session == null)
-                {
-                    _session = new Session(this);
-                }
+                _session ??= new Session(this);
 
                 connection = _session.Connect(observer);
             }
@@ -235,8 +231,8 @@ namespace System.Reactive.Linq.ObservableImpl
         {
             private readonly EventProducer<TDelegate, TArgs> _parent;
             private readonly Subject<TArgs> _subject;
+            private readonly SingleAssignmentDisposable _removeHandler = new();
 
-            private SingleAssignmentDisposable _removeHandler;
             private int _count;
 
             public Session(EventProducer<TDelegate, TArgs> parent)
@@ -290,7 +286,7 @@ namespace System.Reactive.Linq.ObservableImpl
                             {
                                 if (--@this._count == 0)
                                 {
-                                    closureParent._scheduler.ScheduleAction(@this._removeHandler, handler => handler.Dispose());
+                                    closureParent._scheduler.ScheduleAction(@this._removeHandler, static handler => handler.Dispose());
                                     closureParent._session = null;
                                 }
                             }
@@ -307,13 +303,6 @@ namespace System.Reactive.Linq.ObservableImpl
                 lock (_parent._gate) */
                 {
                     //
-                    // When the ref count goes to zero, no-one should be able to perform operations on
-                    // the session object anymore, because it gets nulled out.
-                    //
-                    Debug.Assert(_removeHandler == null);
-                    _removeHandler = new SingleAssignmentDisposable();
-
-                    //
                     // Conversion code is supposed to be a pure function and shouldn't be run on the
                     // scheduler, but the add handler call should. Notice the scheduler can be the
                     // ImmediateScheduler, causing synchronous invocation. This is the default when
@@ -327,7 +316,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
             private void AddHandler(TDelegate onNext)
             {
-                var removeHandler = default(IDisposable);
+                IDisposable removeHandler;
                 try
                 {
                     removeHandler = _parent.AddHandler(onNext);
@@ -368,7 +357,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _addHandler(handler);
             return Disposable.Create(
                 (_removeHandler, handler),
-                tuple => tuple._removeHandler(tuple.handler));
+                static tuple => tuple._removeHandler(tuple.handler));
         }
     }
 }

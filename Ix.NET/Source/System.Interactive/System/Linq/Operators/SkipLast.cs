@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ namespace System.Linq
 {
     public static partial class EnumerableEx
     {
-#if !(REFERENCE_ASSEMBLY && (NETCOREAPP2_0 || NETSTANDARD2_1))
+#if !(REFERENCE_ASSEMBLY && (NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER))
         /// <summary>
         /// Bypasses a specified number of contiguous elements from the end of the sequence and returns the remaining elements.
         /// </summary>
@@ -28,7 +28,6 @@ namespace System.Linq
 
             return SkipLastCore(source, count);
         }
-#endif
 
         private static IEnumerable<TSource> SkipLastCore<TSource>(this IEnumerable<TSource> source, int count)
         {
@@ -44,5 +43,6 @@ namespace System.Linq
                 }
             }
         }
+#endif
     }
 }

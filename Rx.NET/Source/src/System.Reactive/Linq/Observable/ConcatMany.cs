@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Concurrent;
@@ -23,9 +23,12 @@ namespace System.Reactive.Linq.ObservableImpl
             {
                 throw new ArgumentNullException(nameof(observer));
             }
+
             var parent = new ConcatManyOuterObserver(observer);
+
             var d = _sources.SubscribeSafe(parent);
             parent.OnSubscribe(d);
+
             return parent;
         }
 
@@ -34,9 +37,10 @@ namespace System.Reactive.Linq.ObservableImpl
             private readonly IObserver<T> _downstream;
             private readonly ConcurrentQueue<IObservable<T>> _queue;
             private readonly InnerObserver _innerObserver;
-            private IDisposable _upstream;
+
+            private SingleAssignmentDisposableValue _upstream;
             private int _trampoline;
-            private Exception _error;
+            private Exception? _error;
             private bool _done;
             private int _active;
 
@@ -49,7 +53,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
             internal void OnSubscribe(IDisposable d)
             {
-                Disposable.SetSingle(ref _upstream, d);
+                _upstream.Disposable = d;
             }
 
             public void Dispose()
@@ -60,12 +64,12 @@ namespace System.Reactive.Linq.ObservableImpl
 
             private void DisposeMain()
             {
-                Disposable.TryDispose(ref _upstream);
+                _upstream.Dispose();
             }
 
             private bool IsDisposed()
             {
-                return Disposable.GetIsDisposed(ref _upstream);
+                return _upstream.IsDisposed;
             }
 
             public void OnCompleted()
@@ -174,7 +178,7 @@ namespace System.Reactive.Linq.ObservableImpl
             {
                 private readonly ConcatManyOuterObserver _parent;
 
-                internal IDisposable Upstream;
+                internal IDisposable? Upstream;
 
                 internal InnerObserver(ConcatManyOuterObserver parent)
                 {
@@ -189,36 +193,29 @@ namespace System.Reactive.Linq.ObservableImpl
                 internal bool Finish()
                 {
                     var sad = Volatile.Read(ref Upstream);
+
                     if (sad != BooleanDisposable.True)
                     {
                         if (Interlocked.CompareExchange(ref Upstream, null, sad) == sad)
                         {
-                            sad.Dispose();
+                            sad!.Dispose(); // NB: Cannot be null when we get here; SetDisposable is called before Inner[Error|Completed] calls Finish.
                             return true;
                         }
                     }
+
                     return false;
                 }
 
                 public void Dispose()
                 {
-                    Disposable.TryDispose(ref Upstream);
+                    Disposable.Dispose(ref Upstream);
                 }
 
-                public void OnCompleted()
-                {
-                    _parent.InnerComplete();
-                }
+                public void OnCompleted() => _parent.InnerComplete();
 
-                public void OnError(Exception error)
-                {
-                    _parent.InnerError(error);
-                }
+                public void OnError(Exception error) => _parent.InnerError(error);
 
-                public void OnNext(T value)
-                {
-                    _parent.InnerNext(value);
-                }
+                public void OnNext(T value) => _parent.InnerNext(value);
             }
         }
     }

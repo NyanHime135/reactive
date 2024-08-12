@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Disposables;
@@ -16,7 +16,7 @@ namespace System.Reactive
 
     internal abstract class Sink<TTarget> : ISink<TTarget>, IDisposable
     {
-        private IDisposable _upstream;
+        private SingleAssignmentDisposableValue _upstream;
         private volatile IObserver<TTarget> _observer;
 
         protected Sink(IObserver<TTarget> observer)
@@ -41,7 +41,7 @@ namespace System.Reactive
             //Sink is internal so this can pretty much be enforced.
             //_observer = NopObserver<TTarget>.Instance;
 
-            Disposable.TryDispose(ref _upstream);
+            _upstream.Dispose();
         }
 
         public void ForwardOnNext(TTarget value)
@@ -63,12 +63,12 @@ namespace System.Reactive
 
         protected void SetUpstream(IDisposable upstream)
         {
-            Disposable.SetSingle(ref _upstream, upstream);
+            _upstream.Disposable = upstream;
         }
 
         protected void DisposeUpstream()
         {
-            Disposable.TryDispose(ref _upstream);
+            _upstream.Dispose();
         }
     }
 
@@ -91,15 +91,9 @@ namespace System.Reactive
 
         public abstract void OnNext(TSource value);
 
-        public virtual void OnError(Exception error)
-        {
-            ForwardOnError(error);
-        }
+        public virtual void OnError(Exception error) => ForwardOnError(error);
 
-        public virtual void OnCompleted()
-        {
-            ForwardOnCompleted();
-        }
+        public virtual void OnCompleted() => ForwardOnCompleted();
 
         public IObserver<TTarget> GetForwarder() => new _(this);
 
@@ -112,20 +106,11 @@ namespace System.Reactive
                 _forward = forward;
             }
 
-            public void OnNext(TTarget value)
-            {
-                _forward.ForwardOnNext(value);
-            }
+            public void OnNext(TTarget value) => _forward.ForwardOnNext(value);
 
-            public void OnError(Exception error)
-            {
-                _forward.ForwardOnError(error);
-            }
+            public void OnError(Exception error) => _forward.ForwardOnError(error);
 
-            public void OnCompleted()
-            {
-                _forward.ForwardOnCompleted();
-            }
+            public void OnCompleted() => _forward.ForwardOnCompleted();
         }
     }
 }

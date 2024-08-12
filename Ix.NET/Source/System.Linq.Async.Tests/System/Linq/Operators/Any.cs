@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -65,7 +65,7 @@ namespace Tests
         [Fact]
         public async Task AnyAsync_NoSelector_Empty()
         {
-            var res = new int[0].ToAsyncEnumerable().AnyAsync();
+            var res = Array.Empty<int>().ToAsyncEnumerable().AnyAsync();
             Assert.False(await res);
         }
 

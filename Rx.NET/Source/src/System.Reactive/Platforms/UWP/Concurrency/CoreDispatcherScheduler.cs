@@ -1,13 +1,16 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 #if WINDOWS
 using System.Reactive.Disposables;
 using System.Runtime.ExceptionServices;
 using System.Threading;
+using Windows.System;
 using Windows.UI.Core;
+#if HAS_OS_XAML
 using Windows.UI.Xaml;
+#endif
 
 namespace System.Reactive.Concurrency
 {
@@ -15,7 +18,7 @@ namespace System.Reactive.Concurrency
     /// Represents an object that schedules units of work on a <see cref="CoreDispatcher"/>.
     /// </summary>
     /// <remarks>
-    /// This scheduler type is typically used indirectly through the <see cref="Linq.DispatcherObservable.ObserveOnDispatcher{TSource}(IObservable{TSource})"/> and <see cref="Linq.DispatcherObservable.SubscribeOnDispatcher{TSource}(IObservable{TSource})"/> methods that use the current Dispatcher.
+    /// This scheduler type is typically used indirectly through the <see cref="Linq.CoreDispatcherObservable.ObserveOnCoreDispatcher{TSource}(IObservable{TSource})"/> and <see cref="Linq.CoreDispatcherObservable.SubscribeOnCoreDispatcher{TSource}(IObservable{TSource})"/> methods that use the current CoreDispatcher.
     /// </remarks>
     [CLSCompliant(false)]
     public sealed class CoreDispatcherScheduler : LocalScheduler, ISchedulerPeriodic
@@ -28,7 +31,7 @@ namespace System.Reactive.Concurrency
         public CoreDispatcherScheduler(CoreDispatcher dispatcher)
         {
             Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
-            Priority = CoreDispatcherPriority.Normal;
+            Priority = CoreDispatcherPriority.Normal;           
         }
 
         /// <summary>
@@ -50,12 +53,8 @@ namespace System.Reactive.Concurrency
         {
             get
             {
-                var window = Window.Current;
-                if (window == null)
-                {
-                    throw new InvalidOperationException(Strings_WindowsThreading.NO_WINDOW_CURRENT);
-                }
-
+                var window = CoreWindow.GetForCurrentThread()
+                    ?? throw new InvalidOperationException(Strings_WindowsThreading.NO_WINDOW_CURRENT);
                 return new CoreDispatcherScheduler(window.Dispatcher);
             }
         }
@@ -64,6 +63,8 @@ namespace System.Reactive.Concurrency
         /// Gets the <see cref="CoreDispatcher"/> associated with the <see cref="CoreDispatcherScheduler"/>.
         /// </summary>
         public CoreDispatcher Dispatcher { get; }
+
+        private DispatcherQueue? _dispatcherQueue;
 
         /// <summary>
         /// Gets the priority at which work is scheduled.
@@ -108,10 +109,10 @@ namespace System.Reactive.Concurrency
                         // For scheduler implementation guidance rules, see TaskPoolScheduler.cs
                         // in System.Reactive.PlatformServices\Reactive\Concurrency.
                         //
-                        var timer = new DispatcherTimer
-                        {
-                            Interval = TimeSpan.Zero
-                        };
+                        
+                        var timer = CreateDispatcherQueue().CreateTimer();
+                        timer.Interval = TimeSpan.Zero;
+
                         timer.Tick += (o, e) =>
                         {
                             timer.Stop();
@@ -129,8 +130,30 @@ namespace System.Reactive.Concurrency
             );
         }
 
+        private DispatcherQueue CreateDispatcherQueue()
+        {
+            if(_dispatcherQueue != null)
+            {
+                return _dispatcherQueue;
+            }
+
+            if(Dispatcher.HasThreadAccess)
+            {
+                _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+                return _dispatcherQueue;
+            }
+
+            // We're on a different thread, get it from the right one
+            Dispatcher.RunAsync(CoreDispatcherPriority.High, () =>
+            {
+                _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+            }).GetAwaiter().GetResult(); // This is a synchronous call and we need the result to proceed
+
+            return _dispatcherQueue!;
+        }
+
         /// <summary>
-        /// Schedules an action to be executed after <paramref name="dueTime"/> on the dispatcher, using a <see cref="DispatcherTimer"/> object.
+        /// Schedules an action to be executed after <paramref name="dueTime"/> on the dispatcher, using a <see cref="DispatcherQueueTimer"/> object.
         /// </summary>
         /// <typeparam name="TState">The type of the state passed to the scheduled action.</typeparam>
         /// <param name="state">State passed to the action to be executed.</param>
@@ -158,7 +181,7 @@ namespace System.Reactive.Concurrency
         {
             var d = new MultipleAssignmentDisposable();
 
-            var timer = new DispatcherTimer();
+            var timer = CreateDispatcherQueue().CreateTimer();
 
             timer.Tick += (o, e) =>
             {
@@ -172,7 +195,7 @@ namespace System.Reactive.Concurrency
                     finally
                     {
                         t.Stop();
-                        action = null;
+                        action = static (s, t) => Disposable.Empty;
                     }
                 }
             };
@@ -186,7 +209,7 @@ namespace System.Reactive.Concurrency
                 if (t != null)
                 {
                     t.Stop();
-                    action = (_, __) => Disposable.Empty;
+                    action = static (s, t) => Disposable.Empty;
                 }
             });
 
@@ -194,7 +217,7 @@ namespace System.Reactive.Concurrency
         }
 
         /// <summary>
-        /// Schedules a periodic piece of work on the dispatcher, using a <see cref="DispatcherTimer"/> object.
+        /// Schedules a periodic piece of work on the dispatcher, using a <see cref="DispatcherQueueTimer"/> object.
         /// </summary>
         /// <typeparam name="TState">The type of the state passed to the scheduled action.</typeparam>
         /// <param name="state">Initial state passed to the action upon the first iteration.</param>
@@ -219,7 +242,7 @@ namespace System.Reactive.Concurrency
                 throw new ArgumentNullException(nameof(action));
             }
 
-            var timer = new DispatcherTimer();
+            var timer = CreateDispatcherQueue().CreateTimer();
 
             var state1 = state;
 
@@ -237,7 +260,7 @@ namespace System.Reactive.Concurrency
                 if (t != null)
                 {
                     t.Stop();
-                    action = _ => _;
+                    action = static _ => _;
                 }
             });
         }

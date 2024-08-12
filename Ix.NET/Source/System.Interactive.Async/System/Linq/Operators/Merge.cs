@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -10,11 +10,21 @@ namespace System.Linq
 {
     public static partial class AsyncEnumerableEx
     {
+        /// <summary>
+        /// Merges elements from all of the specified async-enumerable sequences into a single async-enumerable sequence.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements in the source sequences.</typeparam>
+        /// <param name="sources">Async-enumerable sequences.</param>
+        /// <returns>The async-enumerable sequence that merges the elements of the async-enumerable sequences.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="sources"/> is null.</exception>
         public static IAsyncEnumerable<TSource> Merge<TSource>(params IAsyncEnumerable<TSource>[] sources)
         {
             if (sources == null)
                 throw Error.ArgumentNull(nameof(sources));
 
+            return Core(sources);
+
+            static async IAsyncEnumerable<TSource> Core(IAsyncEnumerable<TSource>[] sources, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
 #if USE_FAIR_AND_CHEAPER_MERGE
             //
             // This new implementation of Merge differs from the original one in a few ways:
@@ -27,10 +37,6 @@ namespace System.Linq
             //     instead of awaiting a new WhenAny task where "left" sources have preferential
             //     treatment over "right" sources.
             //
-
-            return AsyncEnumerable.Create(Core);
-
-            async IAsyncEnumerator<TSource> Core(CancellationToken cancellationToken)
             {
                 var count = sources.Length;
 
@@ -170,9 +176,6 @@ namespace System.Linq
                 }
             }
 #else
-            return AsyncEnumerable.Create(Core);
-
-            async IAsyncEnumerator<TSource> Core(CancellationToken cancellationToken)
             {
                 var count = sources.Length;
 
@@ -273,12 +276,7 @@ namespace System.Linq
                         }
                         catch (Exception ex)
                         {
-                            if (errors == null)
-                            {
-                                errors = new List<Exception>();
-                            }
-
-                            errors.Add(ex);
+                            (errors ??= []).Add(ex);
                         }
                     }
 
@@ -289,14 +287,27 @@ namespace System.Linq
 
                     if (errors != null)
                     {
+#if NET6_0_OR_GREATER
+#pragma warning disable CA2219 // Do not raise an exception from within a finally clause
+#endif
                         throw new AggregateException(errors);
+#if NET6_0_OR_GREATER
+#pragma warning restore CA2219
+#endif
                     }
                 }
             }
 #endif
-        }
+                    }
 
-        public static IAsyncEnumerable<TSource> Merge<TSource>(this IEnumerable<IAsyncEnumerable<TSource>> sources)
+                    /// <summary>
+                    /// Merges elements from all async-enumerable sequences in the given enumerable sequence into a single async-enumerable sequence.
+                    /// </summary>
+                    /// <typeparam name="TSource">The type of the elements in the source sequences.</typeparam>
+                    /// <param name="sources">Enumerable sequence of async-enumerable sequences.</param>
+                    /// <returns>The async-enumerable sequence that merges the elements of the async-enumerable sequences.</returns>
+                    /// <exception cref="ArgumentNullException"><paramref name="sources"/> is null.</exception>
+                    public static IAsyncEnumerable<TSource> Merge<TSource>(this IEnumerable<IAsyncEnumerable<TSource>> sources)
         {
             if (sources == null)
                 throw Error.ArgumentNull(nameof(sources));
@@ -323,6 +334,13 @@ namespace System.Linq
             return sources.ToAsyncEnumerable().SelectMany(source => source);
         }
 
+        /// <summary>
+        /// Merges elements from all inner async-enumerable sequences into a single async-enumerable sequence.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements in the source sequences.</typeparam>
+        /// <param name="sources">Async-enumerable sequence of inner async-enumerable sequences.</param>
+        /// <returns>The async-enumerable sequence that merges the elements of the inner sequences.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="sources"/> is null.</exception>
         public static IAsyncEnumerable<TSource> Merge<TSource>(this IAsyncEnumerable<IAsyncEnumerable<TSource>> sources)
         {
             if (sources == null)

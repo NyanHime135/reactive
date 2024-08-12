@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -755,7 +755,7 @@ namespace System.Reactive.Linq
         /// <returns>An observable sequence that produces the element at the specified position in the source sequence, or a default value if the index is outside the bounds of the source sequence.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is less than zero.</exception>
-        public static IObservable<TSource> ElementAtOrDefault<TSource>(this IObservable<TSource> source, int index)
+        public static IObservable<TSource?> ElementAtOrDefault<TSource>(this IObservable<TSource> source, int index)
         {
             if (source == null)
             {
@@ -827,7 +827,7 @@ namespace System.Reactive.Linq
         /// <param name="source">Source observable sequence.</param>
         /// <returns>Sequence containing the first element in the observable sequence, or a default value if no such element exists.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
-        public static IObservable<TSource> FirstOrDefaultAsync<TSource>(this IObservable<TSource> source)
+        public static IObservable<TSource?> FirstOrDefaultAsync<TSource>(this IObservable<TSource> source)
         {
             if (source == null)
             {
@@ -845,7 +845,7 @@ namespace System.Reactive.Linq
         /// <param name="predicate">A predicate function to evaluate for elements in the source sequence.</param>
         /// <returns>Sequence containing the first element in the observable sequence that satisfies the condition in the predicate, or a default value if no such element exists.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="predicate"/> is null.</exception>
-        public static IObservable<TSource> FirstOrDefaultAsync<TSource>(this IObservable<TSource> source, Func<TSource, bool> predicate)
+        public static IObservable<TSource?> FirstOrDefaultAsync<TSource>(this IObservable<TSource> source, Func<TSource, bool> predicate)
         {
             if (source == null)
             {
@@ -938,7 +938,7 @@ namespace System.Reactive.Linq
         /// <param name="source">Source observable sequence.</param>
         /// <returns>Sequence containing the last element in the observable sequence, or a default value if no such element exists.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
-        public static IObservable<TSource> LastOrDefaultAsync<TSource>(this IObservable<TSource> source)
+        public static IObservable<TSource?> LastOrDefaultAsync<TSource>(this IObservable<TSource> source)
         {
             if (source == null)
             {
@@ -956,7 +956,7 @@ namespace System.Reactive.Linq
         /// <param name="predicate">A predicate function to evaluate for elements in the source sequence.</param>
         /// <returns>Sequence containing the last element in the observable sequence that satisfies the condition in the predicate, or a default value if no such element exists.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="predicate"/> is null.</exception>
-        public static IObservable<TSource> LastOrDefaultAsync<TSource>(this IObservable<TSource> source, Func<TSource, bool> predicate)
+        public static IObservable<TSource?> LastOrDefaultAsync<TSource>(this IObservable<TSource> source, Func<TSource, bool> predicate)
         {
             if (source == null)
             {
@@ -2332,7 +2332,7 @@ namespace System.Reactive.Linq
         /// <returns>Sequence containing the single element in the observable sequence, or a default value if no such element exists.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         /// <exception cref="InvalidOperationException">(Asynchronous) The source sequence contains more than one element.</exception>
-        public static IObservable<TSource> SingleOrDefaultAsync<TSource>(this IObservable<TSource> source)
+        public static IObservable<TSource?> SingleOrDefaultAsync<TSource>(this IObservable<TSource> source)
         {
             if (source == null)
             {
@@ -2351,7 +2351,7 @@ namespace System.Reactive.Linq
         /// <returns>Sequence containing the single element in the observable sequence that satisfies the condition in the predicate, or a default value if no such element exists.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="predicate"/> is null.</exception>
         /// <exception cref="InvalidOperationException">(Asynchronous) The sequence contains more than one element that satisfies the condition in the predicate.</exception>
-        public static IObservable<TSource> SingleOrDefaultAsync<TSource>(this IObservable<TSource> source, Func<TSource, bool> predicate)
+        public static IObservable<TSource?> SingleOrDefaultAsync<TSource>(this IObservable<TSource> source, Func<TSource, bool> predicate)
         {
             if (source == null)
             {
@@ -2829,6 +2829,7 @@ namespace System.Reactive.Linq
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="keySelector"/> is null.</exception>
         /// <remarks>The return type of this operator differs from the corresponding operator on IEnumerable in order to retain asynchronous behavior.</remarks>
         public static IObservable<IDictionary<TKey, TSource>> ToDictionary<TSource, TKey>(this IObservable<TSource> source, Func<TSource, TKey> keySelector)
+            where TKey : notnull
         {
             if (source == null)
             {
@@ -2855,6 +2856,7 @@ namespace System.Reactive.Linq
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         /// <remarks>The return type of this operator differs from the corresponding operator on IEnumerable in order to retain asynchronous behavior.</remarks>
         public static IObservable<IDictionary<TKey, TSource>> ToDictionary<TSource, TKey>(this IObservable<TSource> source, Func<TSource, TKey> keySelector, IEqualityComparer<TKey> comparer)
+            where TKey : notnull
         {
             if (source == null)
             {
@@ -2887,6 +2889,7 @@ namespace System.Reactive.Linq
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <remarks>The return type of this operator differs from the corresponding operator on IEnumerable in order to retain asynchronous behavior.</remarks>
         public static IObservable<IDictionary<TKey, TElement>> ToDictionary<TSource, TKey, TElement>(this IObservable<TSource> source, Func<TSource, TKey> keySelector, Func<TSource, TElement> elementSelector)
+            where TKey : notnull
         {
             if (source == null)
             {
@@ -2920,6 +2923,7 @@ namespace System.Reactive.Linq
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         /// <remarks>The return type of this operator differs from the corresponding operator on IEnumerable in order to retain asynchronous behavior.</remarks>
         public static IObservable<IDictionary<TKey, TElement>> ToDictionary<TSource, TKey, TElement>(this IObservable<TSource> source, Func<TSource, TKey> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer)
+            where TKey : notnull
         {
             if (source == null)
             {

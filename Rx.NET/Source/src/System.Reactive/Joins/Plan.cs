@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -22,7 +22,8 @@ namespace System.Reactive.Joins
         internal static JoinObserver<TSource> CreateObserver<TSource>(
             Dictionary<object, IJoinObserver> externalSubscriptions, IObservable<TSource> observable, Action<Exception> onError)
         {
-            var observer = default(JoinObserver<TSource>);
+            JoinObserver<TSource> observer;
+
             if (!externalSubscriptions.TryGetValue(observable, out var nonGeneric))
             {
                 observer = new JoinObserver<TSource>(observable, onError);
@@ -32,11 +33,12 @@ namespace System.Reactive.Joins
             {
                 observer = (JoinObserver<TSource>)nonGeneric;
             }
+            
             return observer;
         }
     }
 
-    internal class Plan<T1, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, TResult> : Plan<TResult>
     {
         internal Pattern<T1> Expression { get; }
 
@@ -53,12 +55,12 @@ namespace System.Reactive.Joins
         {
             var onError = new Action<Exception>(observer.OnError);
             var firstJoinObserver = CreateObserver(externalSubscriptions, Expression.First, onError);
-            var activePlan = default(ActivePlan<T1>);
+            var activePlan = default(ActivePlan<T1>)!;
 
             activePlan = new ActivePlan<T1>(firstJoinObserver,
                 first =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first);
@@ -81,7 +83,7 @@ namespace System.Reactive.Joins
         }
     }
 
-    internal class Plan<T1, T2, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, T2, TResult> : Plan<TResult>
     {
         internal Pattern<T1, T2> Expression { get; }
 
@@ -99,12 +101,12 @@ namespace System.Reactive.Joins
             var onError = new Action<Exception>(observer.OnError);
             var firstJoinObserver = CreateObserver(externalSubscriptions, Expression.First, onError);
             var secondJoinObserver = CreateObserver(externalSubscriptions, Expression.Second, onError);
-            var activePlan = default(ActivePlan<T1, T2>);
+            var activePlan = default(ActivePlan<T1, T2>)!;
 
             activePlan = new ActivePlan<T1, T2>(firstJoinObserver, secondJoinObserver,
                 (first, second) =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first, second);
@@ -129,7 +131,7 @@ namespace System.Reactive.Joins
         }
     }
 
-    internal class Plan<T1, T2, T3, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, T2, T3, TResult> : Plan<TResult>
     {
         internal Pattern<T1, T2, T3> Expression { get; }
 
@@ -149,12 +151,12 @@ namespace System.Reactive.Joins
             var firstJoinObserver = CreateObserver(externalSubscriptions, Expression.First, onError);
             var secondJoinObserver = CreateObserver(externalSubscriptions, Expression.Second, onError);
             var thirdJoinObserver = CreateObserver(externalSubscriptions, Expression.Third, onError);
-            var activePlan = default(ActivePlan<T1, T2, T3>);
+            var activePlan = default(ActivePlan<T1, T2, T3>)!;
 
             activePlan = new ActivePlan<T1, T2, T3>(firstJoinObserver, secondJoinObserver, thirdJoinObserver,
                 (first, second, third) =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first, second, third);
@@ -181,7 +183,7 @@ namespace System.Reactive.Joins
         }
     }
 
-    internal class Plan<T1, T2, T3, T4, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, T2, T3, T4, TResult> : Plan<TResult>
     {
         internal Pattern<T1, T2, T3, T4> Expression { get; }
 
@@ -202,12 +204,12 @@ namespace System.Reactive.Joins
             var secondJoinObserver = CreateObserver(externalSubscriptions, Expression.Second, onError);
             var thirdJoinObserver = CreateObserver(externalSubscriptions, Expression.Third, onError);
             var fourthJoinObserver = CreateObserver(externalSubscriptions, Expression.Fourth, onError);
-            var activePlan = default(ActivePlan<T1, T2, T3, T4>);
+            var activePlan = default(ActivePlan<T1, T2, T3, T4>)!;
 
             activePlan = new ActivePlan<T1, T2, T3, T4>(firstJoinObserver, secondJoinObserver, thirdJoinObserver, fourthJoinObserver,
                 (first, second, third, fourth) =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first, second, third, fourth);
@@ -236,7 +238,7 @@ namespace System.Reactive.Joins
         }
     }
 
-    internal class Plan<T1, T2, T3, T4, T5, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, T2, T3, T4, T5, TResult> : Plan<TResult>
     {
         internal Pattern<T1, T2, T3, T4, T5> Expression { get; }
 
@@ -258,12 +260,12 @@ namespace System.Reactive.Joins
             var thirdJoinObserver = CreateObserver(externalSubscriptions, Expression.Third, onError);
             var fourthJoinObserver = CreateObserver(externalSubscriptions, Expression.Fourth, onError);
             var fifthJoinObserver = CreateObserver(externalSubscriptions, Expression.Fifth, onError);
-            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5>);
+            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5>)!;
 
             activePlan = new ActivePlan<T1, T2, T3, T4, T5>(firstJoinObserver, secondJoinObserver, thirdJoinObserver, fourthJoinObserver, fifthJoinObserver,
                 (first, second, third, fourth, fifth) =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first, second, third, fourth, fifth);
@@ -294,7 +296,7 @@ namespace System.Reactive.Joins
         }
     }
 
-    internal class Plan<T1, T2, T3, T4, T5, T6, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, T2, T3, T4, T5, T6, TResult> : Plan<TResult>
     {
         internal Pattern<T1, T2, T3, T4, T5, T6> Expression { get; }
 
@@ -317,13 +319,13 @@ namespace System.Reactive.Joins
             var fourthJoinObserver = CreateObserver(externalSubscriptions, Expression.Fourth, onError);
             var fifthJoinObserver = CreateObserver(externalSubscriptions, Expression.Fifth, onError);
             var sixthJoinObserver = CreateObserver(externalSubscriptions, Expression.Sixth, onError);
-            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6>);
+            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6>)!;
 
             activePlan = new ActivePlan<T1, T2, T3, T4, T5, T6>(firstJoinObserver, secondJoinObserver, thirdJoinObserver,
                 fourthJoinObserver, fifthJoinObserver, sixthJoinObserver,
                 (first, second, third, fourth, fifth, sixth) =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first, second, third, fourth, fifth, sixth);
@@ -356,7 +358,7 @@ namespace System.Reactive.Joins
         }
     }
 
-    internal class Plan<T1, T2, T3, T4, T5, T6, T7, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, T2, T3, T4, T5, T6, T7, TResult> : Plan<TResult>
     {
         internal Pattern<T1, T2, T3, T4, T5, T6, T7> Expression { get; }
 
@@ -380,13 +382,13 @@ namespace System.Reactive.Joins
             var fifthJoinObserver = CreateObserver(externalSubscriptions, Expression.Fifth, onError);
             var sixthJoinObserver = CreateObserver(externalSubscriptions, Expression.Sixth, onError);
             var seventhJoinObserver = CreateObserver(externalSubscriptions, Expression.Seventh, onError);
-            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7>);
+            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7>)!;
 
             activePlan = new ActivePlan<T1, T2, T3, T4, T5, T6, T7>(firstJoinObserver, secondJoinObserver, thirdJoinObserver,
                 fourthJoinObserver, fifthJoinObserver, sixthJoinObserver, seventhJoinObserver,
                 (first, second, third, fourth, fifth, sixth, seventh) =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first, second, third, fourth, fifth, sixth, seventh);
@@ -421,7 +423,7 @@ namespace System.Reactive.Joins
         }
     }
 
-    internal class Plan<T1, T2, T3, T4, T5, T6, T7, T8, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, T2, T3, T4, T5, T6, T7, T8, TResult> : Plan<TResult>
     {
         internal Pattern<T1, T2, T3, T4, T5, T6, T7, T8> Expression { get; }
 
@@ -446,13 +448,13 @@ namespace System.Reactive.Joins
             var sixthJoinObserver = CreateObserver(externalSubscriptions, Expression.Sixth, onError);
             var seventhJoinObserver = CreateObserver(externalSubscriptions, Expression.Seventh, onError);
             var eighthJoinObserver = CreateObserver(externalSubscriptions, Expression.Eighth, onError);
-            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8>);
+            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8>)!;
 
             activePlan = new ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8>(firstJoinObserver, secondJoinObserver, thirdJoinObserver,
                 fourthJoinObserver, fifthJoinObserver, sixthJoinObserver, seventhJoinObserver, eighthJoinObserver,
                 (first, second, third, fourth, fifth, sixth, seventh, eighth) =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first, second, third, fourth, fifth, sixth, seventh, eighth);
@@ -489,7 +491,7 @@ namespace System.Reactive.Joins
         }
     }
 
-    internal class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult> : Plan<TResult>
     {
         internal Pattern<T1, T2, T3, T4, T5, T6, T7, T8, T9> Expression { get; }
 
@@ -515,13 +517,13 @@ namespace System.Reactive.Joins
             var seventhJoinObserver = CreateObserver(externalSubscriptions, Expression.Seventh, onError);
             var eighthJoinObserver = CreateObserver(externalSubscriptions, Expression.Eighth, onError);
             var ninthJoinObserver = CreateObserver(externalSubscriptions, Expression.Ninth, onError);
-            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9>);
+            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9>)!;
 
             activePlan = new ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9>(firstJoinObserver, secondJoinObserver, thirdJoinObserver,
                 fourthJoinObserver, fifthJoinObserver, sixthJoinObserver, seventhJoinObserver, eighthJoinObserver, ninthJoinObserver,
                 (first, second, third, fourth, fifth, sixth, seventh, eighth, ninth) =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first, second, third, fourth, fifth, sixth, seventh, eighth, ninth);
@@ -560,7 +562,7 @@ namespace System.Reactive.Joins
         }
     }
 
-    internal class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TResult> : Plan<TResult>
     {
         internal Pattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> Expression { get; }
 
@@ -587,13 +589,13 @@ namespace System.Reactive.Joins
             var eighthJoinObserver = CreateObserver(externalSubscriptions, Expression.Eighth, onError);
             var ninthJoinObserver = CreateObserver(externalSubscriptions, Expression.Ninth, onError);
             var tenthJoinObserver = CreateObserver(externalSubscriptions, Expression.Tenth, onError);
-            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>);
+            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>)!;
 
             activePlan = new ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(firstJoinObserver, secondJoinObserver, thirdJoinObserver,
                 fourthJoinObserver, fifthJoinObserver, sixthJoinObserver, seventhJoinObserver, eighthJoinObserver, ninthJoinObserver, tenthJoinObserver,
                 (first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth) =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth);
@@ -634,7 +636,7 @@ namespace System.Reactive.Joins
         }
     }
 
-    internal class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TResult> : Plan<TResult>
     {
         internal Pattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> Expression { get; }
 
@@ -663,13 +665,13 @@ namespace System.Reactive.Joins
             var tenthJoinObserver = CreateObserver(externalSubscriptions, Expression.Tenth, onError);
             var eleventhJoinObserver = CreateObserver(externalSubscriptions, Expression.Eleventh, onError);
 
-            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>);
+            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>)!;
 
             activePlan = new ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(firstJoinObserver, secondJoinObserver, thirdJoinObserver,
                 fourthJoinObserver, fifthJoinObserver, sixthJoinObserver, seventhJoinObserver, eighthJoinObserver, ninthJoinObserver, tenthJoinObserver, eleventhJoinObserver,
                 (first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth, eleventh) =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth, eleventh);
@@ -712,7 +714,7 @@ namespace System.Reactive.Joins
         }
     }
 
-    internal class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, TResult> : Plan<TResult>
     {
         internal Pattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> Expression { get; }
 
@@ -742,14 +744,14 @@ namespace System.Reactive.Joins
             var eleventhJoinObserver = CreateObserver(externalSubscriptions, Expression.Eleventh, onError);
             var twelfthJoinObserver = CreateObserver(externalSubscriptions, Expression.Twelfth, onError);
 
-            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>);
+            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>)!;
 
             activePlan = new ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(firstJoinObserver, secondJoinObserver, thirdJoinObserver,
                 fourthJoinObserver, fifthJoinObserver, sixthJoinObserver, seventhJoinObserver, eighthJoinObserver, ninthJoinObserver, tenthJoinObserver, eleventhJoinObserver,
                 twelfthJoinObserver,
                 (first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth, eleventh, twelfth) =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth, eleventh, twelfth);
@@ -795,7 +797,7 @@ namespace System.Reactive.Joins
     }
 
 
-    internal class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, TResult> : Plan<TResult>
     {
         internal Pattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> Expression { get; }
 
@@ -826,14 +828,14 @@ namespace System.Reactive.Joins
             var twelfthJoinObserver = CreateObserver(externalSubscriptions, Expression.Twelfth, onError);
             var thirteenthJoinObserver = CreateObserver(externalSubscriptions, Expression.Thirteenth, onError);
 
-            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>);
+            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>)!;
 
             activePlan = new ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(firstJoinObserver, secondJoinObserver, thirdJoinObserver,
                 fourthJoinObserver, fifthJoinObserver, sixthJoinObserver, seventhJoinObserver, eighthJoinObserver, ninthJoinObserver, tenthJoinObserver, eleventhJoinObserver,
                 twelfthJoinObserver, thirteenthJoinObserver,
                 (first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth, eleventh, twelfth, thirteenth) =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth, eleventh, twelfth, thirteenth);
@@ -881,7 +883,7 @@ namespace System.Reactive.Joins
     }
 
 
-    internal class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, TResult> : Plan<TResult>
     {
         internal Pattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> Expression { get; }
 
@@ -913,7 +915,7 @@ namespace System.Reactive.Joins
             var thirteenthJoinObserver = CreateObserver(externalSubscriptions, Expression.Thirteenth, onError);
             var fourteenthJoinObserver = CreateObserver(externalSubscriptions, Expression.Fourteenth, onError);
 
-            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>);
+            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>)!;
 
             activePlan = new ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(
                 firstJoinObserver, secondJoinObserver, thirdJoinObserver,
@@ -924,7 +926,7 @@ namespace System.Reactive.Joins
                 fourteenthJoinObserver,
                 (first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth, eleventh, twelfth, thirteenth, fourteenth) =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth, eleventh, twelfth, thirteenth, fourteenth);
@@ -973,7 +975,7 @@ namespace System.Reactive.Joins
         }
     }
 
-    internal class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, TResult> : Plan<TResult>
     {
         internal Pattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> Expression { get; }
 
@@ -1006,7 +1008,7 @@ namespace System.Reactive.Joins
             var fourteenthJoinObserver = CreateObserver(externalSubscriptions, Expression.Fourteenth, onError);
             var fifteenthJoinObserver = CreateObserver(externalSubscriptions, Expression.Fifteenth, onError);
 
-            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>);
+            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>)!;
 
             activePlan = new ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(
                 firstJoinObserver, secondJoinObserver, thirdJoinObserver,
@@ -1017,7 +1019,7 @@ namespace System.Reactive.Joins
                 fourteenthJoinObserver, fifteenthJoinObserver,
                 (first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth, eleventh, twelfth, thirteenth, fourteenth, fifteenth) =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth, eleventh, twelfth, thirteenth, fourteenth, fifteenth);
@@ -1067,7 +1069,7 @@ namespace System.Reactive.Joins
             return activePlan;
         }
     }
-    internal class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, TResult> : Plan<TResult>
+    internal sealed class Plan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, TResult> : Plan<TResult>
     {
         internal Pattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16> Expression { get; }
 
@@ -1101,7 +1103,7 @@ namespace System.Reactive.Joins
             var fifteenthJoinObserver = CreateObserver(externalSubscriptions, Expression.Fifteenth, onError);
             var sixteenthJoinObserver = CreateObserver(externalSubscriptions, Expression.Sixteenth, onError);
 
-            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>);
+            var activePlan = default(ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>)!;
 
             activePlan = new ActivePlan<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(
                 firstJoinObserver, secondJoinObserver, thirdJoinObserver,
@@ -1113,7 +1115,7 @@ namespace System.Reactive.Joins
                 sixteenthJoinObserver,
                 (first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth, eleventh, twelfth, thirteenth, fourteenth, fifteenth, sixteenth) =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = Selector(first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth, eleventh, twelfth, thirteenth, fourteenth, fifteenth, sixteenth);

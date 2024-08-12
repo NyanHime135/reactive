@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -13,8 +13,8 @@ namespace System.Reactive.Concurrency
     {
         private bool _isAcquired;
         private bool _hasFaulted;
-        private readonly object _guard = new object();
-        private Queue<(Action<Delegate, object> action, Delegate @delegate, object state)> _queue;
+        private readonly object _guard = new();
+        private Queue<(Action<Delegate, object?> action, Delegate @delegate, object? state)>? _queue;
 
         /// <summary>
         /// Queues the action for execution. If the caller acquires the lock and becomes the owner,
@@ -30,7 +30,7 @@ namespace System.Reactive.Concurrency
                 throw new ArgumentNullException(nameof(action));
             }
 
-            Wait(action, closureAction => closureAction());
+            Wait(action, static closureAction => closureAction!());
         }
 
         /// <summary>
@@ -50,10 +50,10 @@ namespace System.Reactive.Concurrency
                 throw new ArgumentNullException(nameof(action));
             }
 
-            Wait(state, action, (actionObject, stateObject) => ((Action<TState>)actionObject)((TState)stateObject));
+            Wait(state, action, static (actionObject, stateObject) => ((Action<TState>)actionObject)((TState)stateObject!));
         }
 
-        private void Wait(object state, Delegate @delegate, Action<Delegate, object> action)
+        private void Wait(object? state, Delegate @delegate, Action<Delegate, object?> action)
         {
             // allow one thread to update the state
             lock (_guard)
@@ -72,7 +72,7 @@ namespace System.Reactive.Concurrency
                     var q = _queue;
                     if (q == null)
                     {
-                        q = new Queue<(Action<Delegate, object> action, Delegate @delegate, object state)>();
+                        q = new Queue<(Action<Delegate, object?> action, Delegate @delegate, object? state)>();
                         _queue = q;
                     }
                     // enqueue the work

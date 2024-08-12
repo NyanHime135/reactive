@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -7,21 +7,22 @@ using System.Linq;
 using System.Reactive.Linq;
 using Microsoft.Reactive.Testing;
 using ReactiveTests.Dummies;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace ReactiveTests.Tests
 {
+    [TestClass]
     public class OfTypeTest : ReactiveTest
     {
 
-        [Fact]
+        [TestMethod]
         public void OfType_ArgumentChecking()
         {
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.OfType<bool>(default));
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.OfType<bool>(DummyObservable<object>.Instance).Subscribe(null));
         }
 
-        [Fact]
+        [TestMethod]
         public void OfType_Complete()
         {
             var scheduler = new TestScheduler();
@@ -63,7 +64,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void OfType_Error()
         {
             var scheduler = new TestScheduler();
@@ -107,7 +108,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void OfType_Dispose()
         {
             var scheduler = new TestScheduler();

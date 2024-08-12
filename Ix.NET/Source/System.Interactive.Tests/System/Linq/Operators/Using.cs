@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -13,7 +13,7 @@ namespace Tests
         [Fact]
         public void Using_Arguments()
         {
-            AssertThrows<ArgumentNullException>(() => EnumerableEx.Using<int, MyDisposable>(null, d => new[] { 1 }));
+            AssertThrows<ArgumentNullException>(() => EnumerableEx.Using<int, MyDisposable>(null, d => [1]));
             AssertThrows<ArgumentNullException>(() => EnumerableEx.Using<int, MyDisposable>(() => new MyDisposable(), null));
         }
 
@@ -26,12 +26,12 @@ namespace Tests
             Assert.Null(d);
 
             var d1 = default(MyDisposable);
-            xs.ForEach(_ => { d1 = d; Assert.NotNull(d1); Assert.False(d1.Done); });
-            Assert.True(d1.Done);
+            xs.ForEach(_ => { d1 = d; Assert.NotNull(d1); Assert.False(d1!.Done); });
+            Assert.True(d1!.Done);
 
             var d2 = default(MyDisposable);
-            xs.ForEach(_ => { d2 = d; Assert.NotNull(d2); Assert.False(d2.Done); });
-            Assert.True(d2.Done);
+            xs.ForEach(_ => { d2 = d; Assert.NotNull(d2); Assert.False(d2!.Done); });
+            Assert.True(d2!.Done);
 
             Assert.NotSame(d1, d2);
         }
@@ -45,7 +45,7 @@ namespace Tests
             Assert.Null(d);
 
             AssertThrows<MyException>(() => xs.ForEach(_ => { }));
-            Assert.True(d.Done);
+            Assert.True(d!.Done);
         }
 
         [Fact]
@@ -57,7 +57,7 @@ namespace Tests
             Assert.Null(d);
 
             AssertThrows<MyException>(() => xs.ForEach(_ => { }));
-            Assert.True(d.Done);
+            Assert.True(d!.Done);
         }
 
         private sealed class MyDisposable : IDisposable

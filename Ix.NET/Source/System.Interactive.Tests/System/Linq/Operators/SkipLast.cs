@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -8,14 +8,14 @@ using Xunit;
 
 namespace Tests
 {
-#if !NETCOREAPP2_1
+#if !NETCOREAPP2_1_OR_GREATER
     public class SkipLast : Tests
     {
         [Fact]
         public void SkipLast_Arguments()
         {
             AssertThrows<ArgumentNullException>(() => EnumerableEx.SkipLast<int>(null, 5));
-            AssertThrows<ArgumentOutOfRangeException>(() => EnumerableEx.SkipLast<int>(new[] { 1 }, -1));
+            AssertThrows<ArgumentOutOfRangeException>(() => EnumerableEx.SkipLast<int>([1], -1));
         }
 
         [Fact]

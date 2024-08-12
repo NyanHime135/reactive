@@ -1,8 +1,9 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
@@ -12,6 +13,9 @@ using System.Reflection;
 
 namespace System.Reactive
 {
+#if HAS_TRIMMABILITY_ATTRIBUTES
+    [RequiresUnreferencedCode(Constants_Core.AsQueryableTrimIncompatibilityMessage)]
+#endif
     internal class ObservableQueryProvider : IQbservableProvider, IQueryProvider
     {
         public IQbservable<TResult> CreateQuery<TResult>(Expression expression)
@@ -42,7 +46,7 @@ namespace System.Reactive
             //
             //   observable.AsQbservable().<operators>.ToEnumerable().AsQueryable()
             //
-            if (!(expression is MethodCallExpression call) ||
+            if (expression is not MethodCallExpression call ||
                 call.Method.DeclaringType != typeof(Qbservable) ||
                 call.Method.Name != nameof(Qbservable.ToQueryable))
             {
@@ -58,7 +62,7 @@ namespace System.Reactive
                 Expression.Call(
                     AsQueryable.MakeGenericMethod(typeof(TElement)),
                     Expression.Call(
-                        typeof(Observable).GetMethod(nameof(Observable.ToEnumerable)).MakeGenericMethod(typeof(TElement)),
+                        typeof(Observable).GetMethod(nameof(Observable.ToEnumerable))!.MakeGenericMethod(typeof(TElement)),
                         arg0
                     )
                 );
@@ -71,20 +75,9 @@ namespace System.Reactive
             return Expression.Lambda<Func<IQueryable<TElement>>>(res).Compile()();
         }
 
-        private static MethodInfo _staticAsQueryable;
+        private static MethodInfo? _staticAsQueryable;
 
-        private static MethodInfo AsQueryable
-        {
-            get
-            {
-                if (_staticAsQueryable == null)
-                {
-                    _staticAsQueryable = Qbservable.InfoOf<object>(() => Queryable.AsQueryable<object>(null)).GetGenericMethodDefinition();
-                }
-
-                return _staticAsQueryable;
-            }
-        }
+        private static MethodInfo AsQueryable => _staticAsQueryable ??=  Qbservable.InfoOf<object>(() => Queryable.AsQueryable<object>(null!)).GetGenericMethodDefinition();
 
         IQueryable IQueryProvider.CreateQuery(Expression expression)
         {
@@ -102,33 +95,43 @@ namespace System.Reactive
         }
     }
 
+#if HAS_TRIMMABILITY_ATTRIBUTES
+    [RequiresUnreferencedCode(Constants_Core.AsQueryableTrimIncompatibilityMessage)]
+#endif
     internal class ObservableQuery
     {
-        protected object _source;
+        protected object? _source;
         protected Expression _expression;
 
-        public object Source
-        {
-            get { return _source; }
-        }
-
-        public Expression Expression
-        {
-            get { return _expression; }
-        }
-    }
-
-    internal class ObservableQuery<TSource> : ObservableQuery, IQbservable<TSource>
-    {
-        internal ObservableQuery(IObservable<TSource> source)
+        public ObservableQuery(object source)
         {
             _source = source;
             _expression = Expression.Constant(this);
         }
 
-        internal ObservableQuery(Expression expression)
+        public ObservableQuery(Expression expression)
         {
             _expression = expression;
+        }
+
+        public object? Source => _source;
+
+        public Expression Expression => _expression;
+    }
+
+#if HAS_TRIMMABILITY_ATTRIBUTES
+    [RequiresUnreferencedCode(Constants_Core.AsQueryableTrimIncompatibilityMessage)]
+#endif
+    internal class ObservableQuery<TSource> : ObservableQuery, IQbservable<TSource>
+    {
+        internal ObservableQuery(IObservable<TSource> source)
+            : base(source)
+        {
+        }
+
+        internal ObservableQuery(Expression expression)
+            : base(expression)
+        {
         }
 
         public Type ElementType => typeof(TSource);
@@ -151,7 +154,7 @@ namespace System.Reactive
             return ((IObservable<TSource>)_source).Subscribe/*Unsafe*/(observer);
         }
 
-        public override string ToString()
+        public override string? ToString()
         {
             if (_expression is ConstantExpression c && c.Value == this)
             {
@@ -166,6 +169,9 @@ namespace System.Reactive
             return _expression.ToString();
         }
 
+#if HAS_TRIMMABILITY_ATTRIBUTES
+        [RequiresUnreferencedCode(Constants_Core.AsQueryableTrimIncompatibilityMessage)]
+#endif
         private class ObservableRewriter : ExpressionVisitor
         {
             protected override Expression VisitConstant(ConstantExpression/*!*/ node)
@@ -188,11 +194,7 @@ namespace System.Reactive
             {
                 var method = node.Method;
                 var declaringType = method.DeclaringType;
-#if (CRIPPLED_REFLECTION && HAS_WINRT)
-                var baseType = declaringType.GetTypeInfo().BaseType;
-#else
-                var baseType = declaringType.BaseType;
-#endif
+                var baseType = declaringType?.BaseType;
                 if (baseType == typeof(QueryablePattern))
                 {
                     if (method.Name == "Then")
@@ -203,7 +205,7 @@ namespace System.Reactive
                         //
                         var pattern = Visit(node.Object);
                         var arguments = node.Arguments.Select(arg => Unquote(Visit(arg))).ToArray();
-                        var then = Expression.Call(pattern, "Then", method.GetGenericArguments(), arguments);
+                        var then = Expression.Call(pattern!, method.Name, method.GetGenericArguments(), arguments);
                         return then;
                     }
 
@@ -214,7 +216,7 @@ namespace System.Reactive
                         //
                         var lhs = Visit(node.Object);
                         var arguments = node.Arguments.Select(arg => Visit(arg)).ToArray();
-                        var and = Expression.Call(lhs, "And", method.GetGenericArguments(), arguments);
+                        var and = Expression.Call(lhs!, method.Name, method.GetGenericArguments(), arguments);
                         return and;
                     }
                 }
@@ -301,11 +303,7 @@ namespace System.Reactive
                 return base.VisitMethodCall(node);
             }
 
-#if NO_VISITLAMBDAOFT
-            protected override Expression VisitLambda(LambdaExpression node)
-#else
             protected override Expression VisitLambda<T>(Expression<T> node)
-#endif
             {
                 return node;
             }
@@ -318,27 +316,31 @@ namespace System.Reactive
                 //
                 if (method.Name == "When")
                 {
+#pragma warning disable CA1851 // (Possible multiple enumerations of 'IEnumerable'.) Simple fixes could actually make things worse (e.g., by making an unnecessary copy), so unless specific perf issues become apparent here, we will tolerate this.
                     var lastArgument = arguments.Last();
+#pragma warning restore CA1851
                     if (lastArgument.NodeType == ExpressionType.NewArrayInit)
                     {
                         var paramsArray = (NewArrayExpression)lastArgument;
-                        return new List<Expression>
-                        {
+                        return
+                        [
                             Expression.NewArrayInit(
                                 typeof(Plan<>).MakeGenericType(method.GetGenericArguments()[0]),
                                 paramsArray.Expressions.Select(param => Visit(param))
                             )
-                        };
+                        ];
                     }
                 }
 
+#pragma warning disable CA1851 // Possible multiple enumerations of 'IEnumerable' collection
                 return arguments.Select(arg => Visit(arg)).ToList();
+#pragma warning restore CA1851
             }
 
             private class Lazy<T>
             {
                 private readonly Func<T> _factory;
-                private T _value;
+                private T? _value;
                 private bool _initialized;
 
                 public Lazy(Func<T> factory)
@@ -359,20 +361,22 @@ namespace System.Reactive
                             }
                         }
 
-                        return _value;
+                        return _value!;
                     }
                 }
             }
 
-            private static readonly Lazy<ILookup<string, MethodInfo>> ObservableMethods = new Lazy<ILookup<string, MethodInfo>>(() => GetMethods(typeof(Observable)));
+            private static readonly Lazy<ILookup<string, MethodInfo>> ObservableMethods = new(() => GetMethods(typeof(Observable)));
 
             private static MethodCallExpression FindObservableMethod(MethodInfo method, IList<Expression> arguments)
             {
                 //
                 // Where to look for the matching operator?
                 //
-                var targetType = default(Type);
-                var methods = default(ILookup<string, MethodInfo>);
+                
+                Type targetType;
+                ILookup<string, MethodInfo> methods;
+
                 if (method.DeclaringType == typeof(Qbservable))
                 {
                     targetType = typeof(Observable);
@@ -380,22 +384,13 @@ namespace System.Reactive
                 }
                 else
                 {
-                    targetType = method.DeclaringType;
+                    targetType = method.DeclaringType!; // NB: These methods were found from a declaring type.
 
-#if (CRIPPLED_REFLECTION && HAS_WINRT)
-                    var typeInfo = targetType.GetTypeInfo();
-                    if (typeInfo.IsDefined(typeof(LocalQueryMethodImplementationTypeAttribute), false))
-                    {
-                        var mapping = (LocalQueryMethodImplementationTypeAttribute)typeInfo.GetCustomAttributes(typeof(LocalQueryMethodImplementationTypeAttribute), false).Single();
-                        targetType = mapping.TargetType;
-                    }
-#else
                     if (targetType.IsDefined(typeof(LocalQueryMethodImplementationTypeAttribute), false))
                     {
                         var mapping = (LocalQueryMethodImplementationTypeAttribute)targetType.GetCustomAttributes(typeof(LocalQueryMethodImplementationTypeAttribute), false)[0];
                         targetType = mapping.TargetType;
                     }
-#endif
 
                     methods = GetMethods(targetType);
                 }
@@ -404,11 +399,8 @@ namespace System.Reactive
                 // From all the operators with the method's name, find the one that matches all arguments.
                 //
                 var typeArgs = method.IsGenericMethod ? method.GetGenericArguments() : null;
-                var targetMethod = methods[method.Name].FirstOrDefault(candidateMethod => ArgsMatch(candidateMethod, arguments, typeArgs));
-                if (targetMethod == null)
-                {
-                    throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings_Providers.NO_MATCHING_METHOD_FOUND, method.Name, targetType.Name));
-                }
+                var targetMethod = methods[method.Name].FirstOrDefault(candidateMethod => ArgsMatch(candidateMethod, arguments, typeArgs))
+                    ?? throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings_Providers.NO_MATCHING_METHOD_FOUND, method.Name, targetType.Name));
 
                 //
                 // Restore generic arguments.
@@ -435,14 +427,10 @@ namespace System.Reactive
 
             private static ILookup<string, MethodInfo> GetMethods(Type type)
             {
-#if !(CRIPPLED_REFLECTION && HAS_WINRT)
-                return type.GetMethods(BindingFlags.Static | BindingFlags.Public).ToLookup(m => m.Name);
-#else
                 return type.GetTypeInfo().DeclaredMethods.Where(m => m.IsStatic && m.IsPublic).ToLookup(m => m.Name);
-#endif
             }
 
-            private static bool ArgsMatch(MethodInfo method, IList<Expression> arguments, Type[] typeArgs)
+            private static bool ArgsMatch(MethodInfo method, IList<Expression> arguments, Type[]? typeArgs)
             {
                 //
                 // Number of parameters should match. Notice we've sanitized IQbservableProvider "this"

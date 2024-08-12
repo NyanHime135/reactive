@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Disposables;
@@ -12,7 +12,7 @@ namespace System.Reactive.Concurrency
     /// <seealso cref="Scheduler.Immediate">Singleton instance of this type exposed through this static property.</seealso>
     public sealed class ImmediateScheduler : LocalScheduler
     {
-        private static readonly Lazy<ImmediateScheduler> _instance = new Lazy<ImmediateScheduler>(() => new ImmediateScheduler());
+        private static readonly Lazy<ImmediateScheduler> StaticInstance = new(static () => new ImmediateScheduler());
 
         private ImmediateScheduler()
         {
@@ -21,7 +21,7 @@ namespace System.Reactive.Concurrency
         /// <summary>
         /// Gets the singleton instance of the immediate scheduler.
         /// </summary>
-        public static ImmediateScheduler Instance => _instance.Value;
+        public static ImmediateScheduler Instance => StaticInstance.Value;
 
         /// <summary>
         /// Schedules an action to be executed.
@@ -68,7 +68,7 @@ namespace System.Reactive.Concurrency
 
         private sealed class AsyncLockScheduler : LocalScheduler
         {
-            private AsyncLock _asyncLock;
+            private AsyncLock? _asyncLock;
 
             public override IDisposable Schedule<TState>(TState state, Func<IScheduler, TState, IDisposable> action)
             {
@@ -79,10 +79,7 @@ namespace System.Reactive.Concurrency
 
                 var m = new SingleAssignmentDisposable();
 
-                if (_asyncLock == null)
-                {
-                    _asyncLock = new AsyncLock();
-                }
+                _asyncLock ??= new AsyncLock();
 
                 _asyncLock.Wait(
                     (@this: this, m, action, state),
@@ -118,10 +115,7 @@ namespace System.Reactive.Concurrency
 
                 var m = new SingleAssignmentDisposable();
 
-                if (_asyncLock == null)
-                {
-                    _asyncLock = new AsyncLock();
-                }
+                _asyncLock ??= new AsyncLock();
 
                 _asyncLock.Wait(
                     (@this: this, m, state, action, timer, dueTime),

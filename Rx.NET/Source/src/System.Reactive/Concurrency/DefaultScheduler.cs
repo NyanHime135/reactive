@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Disposables;
@@ -12,13 +12,13 @@ namespace System.Reactive.Concurrency
     /// <seealso cref="Scheduler.Default">Singleton instance of this type exposed through this static property.</seealso>
     public sealed class DefaultScheduler : LocalScheduler, ISchedulerPeriodic
     {
-        private static readonly Lazy<DefaultScheduler> _instance = new Lazy<DefaultScheduler>(() => new DefaultScheduler());
+        private static readonly Lazy<DefaultScheduler> DefaultInstance = new(() => new DefaultScheduler());
         private static readonly IConcurrencyAbstractionLayer Cal = ConcurrencyAbstractionLayer.Current;
 
         /// <summary>
         /// Gets the singleton instance of the default scheduler.
         /// </summary>
-        public static DefaultScheduler Instance => _instance.Value;
+        public static DefaultScheduler Instance => DefaultInstance.Value;
 
         private DefaultScheduler()
         {
@@ -42,7 +42,7 @@ namespace System.Reactive.Concurrency
             var workItem = new UserWorkItem<TState>(this, state, action);
 
             workItem.CancelQueueDisposable = Cal.QueueUserWorkItem(
-                closureWorkItem => ((UserWorkItem<TState>)closureWorkItem).Run(),
+                static closureWorkItem => ((UserWorkItem<TState>)closureWorkItem!).Run(),
                 workItem);
 
             return workItem;
@@ -73,7 +73,7 @@ namespace System.Reactive.Concurrency
             var workItem = new UserWorkItem<TState>(this, state, action);
 
             workItem.CancelQueueDisposable = Cal.StartTimer(
-                closureWorkItem => ((UserWorkItem<TState>)closureWorkItem).Run(),
+                static closureWorkItem => ((UserWorkItem<TState>)closureWorkItem!).Run(),
                 workItem,
                 dt);
 
@@ -110,7 +110,7 @@ namespace System.Reactive.Concurrency
             private TState _state;
             private Func<TState, TState> _action;
             private readonly IDisposable _cancel;
-            private readonly AsyncLock _gate = new AsyncLock();
+            private readonly AsyncLock _gate = new();
 
             public PeriodicallyScheduledWorkItem(TState state, TimeSpan period, Func<TState, TState> action)
             {
@@ -124,7 +124,7 @@ namespace System.Reactive.Concurrency
             {
                 _gate.Wait(
                     this,
-                    closureWorkItem => closureWorkItem._state = closureWorkItem._action(closureWorkItem._state));
+                    static closureWorkItem => closureWorkItem._state = closureWorkItem._action(closureWorkItem._state));
             }
 
             public void Dispose()
@@ -141,7 +141,7 @@ namespace System.Reactive.Concurrency
         /// </summary>
         /// <param name="serviceType">Scheduler service interface type to discover.</param>
         /// <returns>Object implementing the requested service, if available; null otherwise.</returns>
-        protected override object GetService(Type serviceType)
+        protected override object? GetService(Type serviceType)
         {
             if (serviceType == typeof(ISchedulerLongRunning))
             {
@@ -161,7 +161,7 @@ namespace System.Reactive.Concurrency
                 private readonly TState _state;
                 private readonly Action<TState, ICancelable> _action;
 
-                private IDisposable _cancel;
+                private SingleAssignmentDisposableValue _cancel;
 
                 public LongScheduledWorkItem(TState state, Action<TState, ICancelable> action)
                 {
@@ -171,7 +171,7 @@ namespace System.Reactive.Concurrency
                     Cal.StartThread(
                         thisObject =>
                         {
-                            var @this = (LongScheduledWorkItem<TState>)thisObject;
+                            var @this = (LongScheduledWorkItem<TState>)thisObject!;
 
                             //
                             // Notice we don't check d.IsDisposed. The contract for ISchedulerLongRunning
@@ -186,10 +186,10 @@ namespace System.Reactive.Concurrency
 
                 public void Dispose()
                 {
-                    Disposable.TryDispose(ref _cancel);
+                    _cancel.Dispose();
                 }
 
-                public bool IsDisposed => Disposable.GetIsDisposed(ref _cancel);
+                public bool IsDisposed => _cancel.IsDisposed;
             }
 
             public static readonly ISchedulerLongRunning Instance = new LongRunning();

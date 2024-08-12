@@ -1,7 +1,6 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
-
 
 namespace System.Reactive.Linq.ObservableImpl
 {
@@ -14,7 +13,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _observableFactory = observableFactory;
         }
 
-        protected override _ CreateSink(IObserver<TValue> observer) => new _(_observableFactory, observer);
+        protected override _ CreateSink(IObserver<TValue> observer) => new(_observableFactory, observer);
 
         protected override void Run(_ sink) => sink.Run();
 
@@ -32,7 +31,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
             public void Run()
             {
-                var result = default(IObservable<TValue>);
+                IObservable<TValue> result;
                 try
                 {
                     result = _observableFactory();

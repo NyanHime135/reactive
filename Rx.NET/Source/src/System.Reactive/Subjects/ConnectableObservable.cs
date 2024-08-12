@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Linq;
@@ -11,13 +11,13 @@ namespace System.Reactive.Subjects
     /// </summary>
     /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
     /// <typeparam name="TResult">The type of the elements in the resulting sequence, after transformation through the subject.</typeparam>
-    internal class ConnectableObservable<TSource, TResult> : IConnectableObservable<TResult>
+    internal sealed class ConnectableObservable<TSource, TResult> : IConnectableObservable<TResult>
     {
         private readonly ISubject<TSource, TResult> _subject;
         private readonly IObservable<TSource> _source;
         private readonly object _gate;
 
-        private Connection _connection;
+        private Connection? _connection;
 
         /// <summary>
         /// Creates an observable that can be connected and disconnected from its source.
@@ -52,7 +52,7 @@ namespace System.Reactive.Subjects
         private sealed class Connection : IDisposable
         {
             private readonly ConnectableObservable<TSource, TResult> _parent;
-            private IDisposable _subscription;
+            private IDisposable? _subscription;
 
             public Connection(ConnectableObservable<TSource, TResult> parent, IDisposable subscription)
             {

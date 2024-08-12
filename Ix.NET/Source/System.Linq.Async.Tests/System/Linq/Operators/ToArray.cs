@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -31,7 +31,7 @@ namespace Tests
         [Fact]
         public async Task ToArray_IAsyncIListProvider_Empty1()
         {
-            var xs = new int[0];
+            var xs = Array.Empty<int>();
             var res = xs.ToAsyncEnumerable().ToArrayAsync();
             Assert.True((await res).SequenceEqual(xs));
         }

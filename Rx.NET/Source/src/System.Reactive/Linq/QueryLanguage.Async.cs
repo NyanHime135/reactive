@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -17,7 +17,7 @@ namespace System.Reactive.Linq
 
         #region Func
 
-        public virtual Func<IObservable<TResult>> FromAsyncPattern<TResult>(Func<AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
+        public virtual Func<IObservable<TResult>> FromAsyncPattern<TResult>(Func<AsyncCallback, object?, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
         {
             return () =>
             {
@@ -53,7 +53,7 @@ namespace System.Reactive.Linq
             };
         }
 
-        public virtual Func<T1, IObservable<TResult>> FromAsyncPattern<T1, TResult>(Func<T1, AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
+        public virtual Func<T1, IObservable<TResult>> FromAsyncPattern<T1, TResult>(Func<T1, AsyncCallback, object?, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
         {
             return x =>
             {
@@ -85,7 +85,7 @@ namespace System.Reactive.Linq
             };
         }
 
-        public virtual Func<T1, T2, IObservable<TResult>> FromAsyncPattern<T1, T2, TResult>(Func<T1, T2, AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
+        public virtual Func<T1, T2, IObservable<TResult>> FromAsyncPattern<T1, T2, TResult>(Func<T1, T2, AsyncCallback, object?, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
         {
             return (x, y) =>
             {
@@ -117,7 +117,7 @@ namespace System.Reactive.Linq
             };
         }
 
-        public virtual Func<T1, T2, T3, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, TResult>(Func<T1, T2, T3, AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
+        public virtual Func<T1, T2, T3, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, TResult>(Func<T1, T2, T3, AsyncCallback, object?, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
         {
             return (x, y, z) =>
             {
@@ -149,7 +149,7 @@ namespace System.Reactive.Linq
             };
         }
 
-        public virtual Func<T1, T2, T3, T4, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, TResult>(Func<T1, T2, T3, T4, AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
+        public virtual Func<T1, T2, T3, T4, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, TResult>(Func<T1, T2, T3, T4, AsyncCallback, object?, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
         {
             return (x, y, z, a) =>
             {
@@ -181,7 +181,7 @@ namespace System.Reactive.Linq
             };
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, TResult>(Func<T1, T2, T3, T4, T5, AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, TResult>(Func<T1, T2, T3, T4, T5, AsyncCallback, object?, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
         {
             return (x, y, z, a, b) =>
             {
@@ -213,7 +213,7 @@ namespace System.Reactive.Linq
             };
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, TResult>(Func<T1, T2, T3, T4, T5, T6, AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, TResult>(Func<T1, T2, T3, T4, T5, T6, AsyncCallback, object?, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
         {
             return (x, y, z, a, b, c) =>
             {
@@ -245,7 +245,7 @@ namespace System.Reactive.Linq
             };
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, AsyncCallback, object?, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
         {
             return (x, y, z, a, b, c, d) =>
             {
@@ -277,7 +277,7 @@ namespace System.Reactive.Linq
             };
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, T8, AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, T8, AsyncCallback, object?, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
         {
             return (x, y, z, a, b, c, d, e) =>
             {
@@ -309,7 +309,7 @@ namespace System.Reactive.Linq
             };
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, AsyncCallback, object?, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
         {
             return (x, y, z, a, b, c, d, e, f) =>
             {
@@ -341,7 +341,7 @@ namespace System.Reactive.Linq
             };
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, AsyncCallback, object?, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
         {
             return (x, y, z, a, b, c, d, e, f, g) =>
             {
@@ -373,7 +373,7 @@ namespace System.Reactive.Linq
             };
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, AsyncCallback, object?, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
         {
             return (x, y, z, a, b, c, d, e, f, g, h) =>
             {
@@ -405,7 +405,7 @@ namespace System.Reactive.Linq
             };
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, AsyncCallback, object?, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
         {
             return (x, y, z, a, b, c, d, e, f, g, h, i) =>
             {
@@ -437,7 +437,7 @@ namespace System.Reactive.Linq
             };
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, AsyncCallback, object?, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
         {
             return (x, y, z, a, b, c, d, e, f, g, h, i, j) =>
             {
@@ -469,7 +469,7 @@ namespace System.Reactive.Linq
             };
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, IObservable<TResult>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, TResult>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, AsyncCallback, object?, IAsyncResult> begin, Func<IAsyncResult, TResult> end)
         {
             return (x, y, z, a, b, c, d, e, f, g, h, i, j, k) =>
             {
@@ -505,7 +505,7 @@ namespace System.Reactive.Linq
 
         #region Action
 
-        public virtual Func<IObservable<Unit>> FromAsyncPattern(Func<AsyncCallback, object, IAsyncResult> begin, Action<IAsyncResult> end)
+        public virtual Func<IObservable<Unit>> FromAsyncPattern(Func<AsyncCallback, object?, IAsyncResult> begin, Action<IAsyncResult> end)
         {
             return FromAsyncPattern(begin, iar =>
             {
@@ -514,7 +514,7 @@ namespace System.Reactive.Linq
             });
         }
 
-        public virtual Func<T1, IObservable<Unit>> FromAsyncPattern<T1>(Func<T1, AsyncCallback, object, IAsyncResult> begin, Action<IAsyncResult> end)
+        public virtual Func<T1, IObservable<Unit>> FromAsyncPattern<T1>(Func<T1, AsyncCallback, object?, IAsyncResult> begin, Action<IAsyncResult> end)
         {
             return FromAsyncPattern(begin, iar =>
             {
@@ -523,7 +523,7 @@ namespace System.Reactive.Linq
             });
         }
 
-        public virtual Func<T1, T2, IObservable<Unit>> FromAsyncPattern<T1, T2>(Func<T1, T2, AsyncCallback, object, IAsyncResult> begin, Action<IAsyncResult> end)
+        public virtual Func<T1, T2, IObservable<Unit>> FromAsyncPattern<T1, T2>(Func<T1, T2, AsyncCallback, object?, IAsyncResult> begin, Action<IAsyncResult> end)
         {
             return FromAsyncPattern(begin, iar =>
             {
@@ -532,7 +532,7 @@ namespace System.Reactive.Linq
             });
         }
 
-        public virtual Func<T1, T2, T3, IObservable<Unit>> FromAsyncPattern<T1, T2, T3>(Func<T1, T2, T3, AsyncCallback, object, IAsyncResult> begin, Action<IAsyncResult> end)
+        public virtual Func<T1, T2, T3, IObservable<Unit>> FromAsyncPattern<T1, T2, T3>(Func<T1, T2, T3, AsyncCallback, object?, IAsyncResult> begin, Action<IAsyncResult> end)
         {
             return FromAsyncPattern(begin, iar =>
             {
@@ -541,7 +541,7 @@ namespace System.Reactive.Linq
             });
         }
 
-        public virtual Func<T1, T2, T3, T4, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4>(Func<T1, T2, T3, T4, AsyncCallback, object, IAsyncResult> begin, Action<IAsyncResult> end)
+        public virtual Func<T1, T2, T3, T4, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4>(Func<T1, T2, T3, T4, AsyncCallback, object?, IAsyncResult> begin, Action<IAsyncResult> end)
         {
             return FromAsyncPattern(begin, iar =>
             {
@@ -550,7 +550,7 @@ namespace System.Reactive.Linq
             });
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5>(Func<T1, T2, T3, T4, T5, AsyncCallback, object, IAsyncResult> begin, Action<IAsyncResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5>(Func<T1, T2, T3, T4, T5, AsyncCallback, object?, IAsyncResult> begin, Action<IAsyncResult> end)
         {
             return FromAsyncPattern(begin, iar =>
             {
@@ -559,7 +559,7 @@ namespace System.Reactive.Linq
             });
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6>(Func<T1, T2, T3, T4, T5, T6, AsyncCallback, object, IAsyncResult> begin, Action<IAsyncResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6>(Func<T1, T2, T3, T4, T5, T6, AsyncCallback, object?, IAsyncResult> begin, Action<IAsyncResult> end)
         {
             return FromAsyncPattern(begin, iar =>
             {
@@ -568,7 +568,7 @@ namespace System.Reactive.Linq
             });
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7>(Func<T1, T2, T3, T4, T5, T6, T7, AsyncCallback, object, IAsyncResult> begin, Action<IAsyncResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7>(Func<T1, T2, T3, T4, T5, T6, T7, AsyncCallback, object?, IAsyncResult> begin, Action<IAsyncResult> end)
         {
             return FromAsyncPattern(begin, iar =>
             {
@@ -577,7 +577,7 @@ namespace System.Reactive.Linq
             });
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8>(Func<T1, T2, T3, T4, T5, T6, T7, T8, AsyncCallback, object, IAsyncResult> begin, Action<IAsyncResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8>(Func<T1, T2, T3, T4, T5, T6, T7, T8, AsyncCallback, object?, IAsyncResult> begin, Action<IAsyncResult> end)
         {
             return FromAsyncPattern(begin, iar =>
             {
@@ -586,7 +586,7 @@ namespace System.Reactive.Linq
             });
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, AsyncCallback, object, IAsyncResult> begin, Action<IAsyncResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, AsyncCallback, object?, IAsyncResult> begin, Action<IAsyncResult> end)
         {
             return FromAsyncPattern(begin, iar =>
             {
@@ -595,7 +595,7 @@ namespace System.Reactive.Linq
             });
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, AsyncCallback, object, IAsyncResult> begin, Action<IAsyncResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, AsyncCallback, object?, IAsyncResult> begin, Action<IAsyncResult> end)
         {
             return FromAsyncPattern(begin, iar =>
             {
@@ -604,7 +604,7 @@ namespace System.Reactive.Linq
             });
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, AsyncCallback, object, IAsyncResult> begin, Action<IAsyncResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, AsyncCallback, object?, IAsyncResult> begin, Action<IAsyncResult> end)
         {
             return FromAsyncPattern(begin, iar =>
             {
@@ -613,7 +613,7 @@ namespace System.Reactive.Linq
             });
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, AsyncCallback, object, IAsyncResult> begin, Action<IAsyncResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, AsyncCallback, object?, IAsyncResult> begin, Action<IAsyncResult> end)
         {
             return FromAsyncPattern(begin, iar =>
             {
@@ -622,7 +622,7 @@ namespace System.Reactive.Linq
             });
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, AsyncCallback, object, IAsyncResult> begin, Action<IAsyncResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, AsyncCallback, object?, IAsyncResult> begin, Action<IAsyncResult> end)
         {
             return FromAsyncPattern(begin, iar =>
             {
@@ -631,7 +631,7 @@ namespace System.Reactive.Linq
             });
         }
 
-        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, AsyncCallback, object, IAsyncResult> begin, Action<IAsyncResult> end)
+        public virtual Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, IObservable<Unit>> FromAsyncPattern<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, AsyncCallback, object?, IAsyncResult> begin, Action<IAsyncResult> end)
         {
             return FromAsyncPattern(begin, iar =>
             {
@@ -660,17 +660,17 @@ namespace System.Reactive.Linq
 
         public virtual IObservable<TSource> StartAsync<TSource>(Func<Task<TSource>> functionAsync)
         {
-            return StartAsyncImpl(functionAsync, null);
+            return StartAsyncImpl(functionAsync, new TaskObservationOptions.Value(null, ignoreExceptionsAfterUnsubscribe: false));
         }
 
-        public virtual IObservable<TSource> StartAsync<TSource>(Func<Task<TSource>> functionAsync, IScheduler scheduler)
+        public virtual IObservable<TSource> StartAsync<TSource>(Func<Task<TSource>> functionAsync, in TaskObservationOptions.Value options)
         {
-            return StartAsyncImpl(functionAsync, scheduler);
+            return StartAsyncImpl(functionAsync, options);
         }
 
-        private IObservable<TSource> StartAsyncImpl<TSource>(Func<Task<TSource>> functionAsync, IScheduler scheduler)
+        private IObservable<TSource> StartAsyncImpl<TSource>(Func<Task<TSource>> functionAsync, in TaskObservationOptions.Value options)
         {
-            var task = default(Task<TSource>);
+            Task<TSource> task;
             try
             {
                 task = functionAsync();
@@ -680,29 +680,24 @@ namespace System.Reactive.Linq
                 return Throw<TSource>(exception);
             }
 
-            if (scheduler != null)
-            {
-                return task.ToObservable(scheduler);
-            }
-            
-            return task.ToObservable();
+            return task.ToObservable(options);
         }
 
         public virtual IObservable<TSource> StartAsync<TSource>(Func<CancellationToken, Task<TSource>> functionAsync)
         {
-            return StartAsyncImpl(functionAsync, null);
+            return StartAsyncImpl(functionAsync, new TaskObservationOptions.Value(null, false));
         }
 
-        public virtual IObservable<TSource> StartAsync<TSource>(Func<CancellationToken, Task<TSource>> functionAsync, IScheduler scheduler)
+        public virtual IObservable<TSource> StartAsync<TSource>(Func<CancellationToken, Task<TSource>> functionAsync, in TaskObservationOptions.Value options)
         {
-            return StartAsyncImpl(functionAsync, scheduler);
+            return StartAsyncImpl(functionAsync, options);
         }
 
-        private IObservable<TSource> StartAsyncImpl<TSource>(Func<CancellationToken, Task<TSource>> functionAsync, IScheduler scheduler)
+        private IObservable<TSource> StartAsyncImpl<TSource>(Func<CancellationToken, Task<TSource>> functionAsync, in TaskObservationOptions.Value options)
         {
             var cancellable = new CancellationDisposable();
 
-            var task = default(Task<TSource>);
+            Task<TSource> task;
             try
             {
                 task = functionAsync(cancellable.Token);
@@ -712,16 +707,7 @@ namespace System.Reactive.Linq
                 return Throw<TSource>(exception);
             }
 
-            var result = default(IObservable<TSource>);
-
-            if (scheduler != null)
-            {
-                result = task.ToObservable(scheduler);
-            }
-            else
-            {
-                result = task.ToObservable();
-            }
+            var result = task.ToObservable(options);
 
             return new StartAsyncObservable<TSource>(cancellable, result);
         }
@@ -763,17 +749,17 @@ namespace System.Reactive.Linq
 
         public virtual IObservable<Unit> StartAsync(Func<Task> actionAsync)
         {
-            return StartAsyncImpl(actionAsync, null);
+            return StartAsyncImpl(actionAsync, new TaskObservationOptions.Value(null, ignoreExceptionsAfterUnsubscribe: false));
         }
 
-        public virtual IObservable<Unit> StartAsync(Func<Task> actionAsync, IScheduler scheduler)
+        public virtual IObservable<Unit> StartAsync(Func<Task> actionAsync, in TaskObservationOptions.Value options)
         {
-            return StartAsyncImpl(actionAsync, scheduler);
+            return StartAsyncImpl(actionAsync, options);
         }
 
-        private IObservable<Unit> StartAsyncImpl(Func<Task> actionAsync, IScheduler scheduler)
+        private IObservable<Unit> StartAsyncImpl(Func<Task> actionAsync, in TaskObservationOptions.Value options)
         {
-            var task = default(Task);
+            Task task;
             try
             {
                 task = actionAsync();
@@ -783,29 +769,24 @@ namespace System.Reactive.Linq
                 return Throw<Unit>(exception);
             }
 
-            if (scheduler != null)
-            {
-                return task.ToObservable(scheduler);
-            }
-            
-            return task.ToObservable();
+            return task.ToObservable(options);
         }
 
         public virtual IObservable<Unit> StartAsync(Func<CancellationToken, Task> actionAsync)
         {
-            return StartAsyncImpl(actionAsync, null);
+            return StartAsyncImpl(actionAsync, new TaskObservationOptions.Value(null, ignoreExceptionsAfterUnsubscribe: false));
         }
 
-        public virtual IObservable<Unit> StartAsync(Func<CancellationToken, Task> actionAsync, IScheduler scheduler)
+        public virtual IObservable<Unit> StartAsync(Func<CancellationToken, Task> actionAsync, in TaskObservationOptions.Value options)
         {
-            return StartAsyncImpl(actionAsync, scheduler);
+            return StartAsyncImpl(actionAsync, options);
         }
 
-        private IObservable<Unit> StartAsyncImpl(Func<CancellationToken, Task> actionAsync, IScheduler scheduler)
+        private IObservable<Unit> StartAsyncImpl(Func<CancellationToken, Task> actionAsync, in TaskObservationOptions.Value options)
         {
             var cancellable = new CancellationDisposable();
 
-            var task = default(Task);
+            Task task;
             try
             {
                 task = actionAsync(cancellable.Token);
@@ -815,16 +796,7 @@ namespace System.Reactive.Linq
                 return Throw<Unit>(exception);
             }
 
-            var result = default(IObservable<Unit>);
-
-            if (scheduler != null)
-            {
-                result = task.ToObservable(scheduler);
-            }
-            else
-            {
-                result = task.ToObservable();
-            }
+            var result = task.ToObservable(options);
 
             return new StartAsyncObservable<Unit>(cancellable, result);
         }
@@ -847,14 +819,14 @@ namespace System.Reactive.Linq
             return Defer(() => StartAsync(functionAsync));
         }
 
-        public virtual IObservable<TResult> FromAsync<TResult>(Func<Task<TResult>> functionAsync, IScheduler scheduler)
+        public virtual IObservable<TResult> FromAsync<TResult>(Func<Task<TResult>> functionAsync, TaskObservationOptions.Value options)
         {
-            return Defer(() => StartAsync(functionAsync, scheduler));
+            return Defer(() => StartAsync(functionAsync, options));
         }
 
-        public virtual IObservable<TResult> FromAsync<TResult>(Func<CancellationToken, Task<TResult>> functionAsync, IScheduler scheduler)
+        public virtual IObservable<TResult> FromAsync<TResult>(Func<CancellationToken, Task<TResult>> functionAsync, TaskObservationOptions.Value options)
         {
-            return Defer(() => StartAsync(functionAsync, scheduler));
+            return Defer(() => StartAsync(functionAsync, options));
         }
 
         #endregion
@@ -871,14 +843,14 @@ namespace System.Reactive.Linq
             return Defer(() => StartAsync(actionAsync));
         }
 
-        public virtual IObservable<Unit> FromAsync(Func<Task> actionAsync, IScheduler scheduler)
+        public virtual IObservable<Unit> FromAsync(Func<Task> actionAsync, TaskObservationOptions.Value options)
         {
-            return Defer(() => StartAsync(actionAsync, scheduler));
+            return Defer(() => StartAsync(actionAsync, options));
         }
 
-        public virtual IObservable<Unit> FromAsync(Func<CancellationToken, Task> actionAsync, IScheduler scheduler)
+        public virtual IObservable<Unit> FromAsync(Func<CancellationToken, Task> actionAsync, TaskObservationOptions.Value options)
         {
-            return Defer(() => StartAsync(actionAsync, scheduler));
+            return Defer(() => StartAsync(actionAsync, options));
         }
 
         #endregion
@@ -901,7 +873,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((function, subject), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function();
@@ -930,7 +902,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((function, subject, first), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first);
@@ -959,7 +931,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((subject, function, first, second), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first, state.second);
@@ -988,7 +960,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((subject, function, first, second, third), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first, state.second, state.third);
@@ -1017,7 +989,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((subject, function, first, second, third, fourth), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first, state.second, state.third, state.fourth);
@@ -1046,7 +1018,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((subject, function, first, second, third, fourth, fifth), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first, state.second, state.third, state.fourth, state.fifth);
@@ -1075,7 +1047,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((subject, function, first, second, third, fourth, fifth, sixth), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first, state.second, state.third, state.fourth, state.fifth, state.sixth);
@@ -1104,7 +1076,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((subject, function, first, second, third, fourth, fifth, sixth, seventh), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first, state.second, state.third, state.fourth, state.fifth, state.sixth, state.seventh);
@@ -1133,7 +1105,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((subject, function, first, second, third, fourth, fifth, sixth, seventh, eight), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first, state.second, state.third, state.fourth, state.fifth, state.sixth, state.seventh, state.eight);
@@ -1162,7 +1134,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((subject, function, first, second, third, fourth, fifth, sixth, seventh, eight, ninth), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first, state.second, state.third, state.fourth, state.fifth, state.sixth, state.seventh, state.eight, state.ninth);
@@ -1191,7 +1163,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((subject, function, first, second, third, fourth, fifth, sixth, seventh, eight, ninth, tenth), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first, state.second, state.third, state.fourth, state.fifth, state.sixth, state.seventh, state.eight, state.ninth, state.tenth);
@@ -1220,7 +1192,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((subject, function, first, second, third, fourth, fifth, sixth, seventh, eight, ninth, tenth, eleventh), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first, state.second, state.third, state.fourth, state.fifth, state.sixth, state.seventh, state.eight, state.ninth, state.tenth, state.eleventh);
@@ -1249,7 +1221,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((subject, function, first, second, third, fourth, fifth, sixth, seventh, eight, ninth, tenth, eleventh, twelfth), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first, state.second, state.third, state.fourth, state.fifth, state.sixth, state.seventh, state.eight, state.ninth, state.tenth, state.eleventh, state.twelfth);
@@ -1278,7 +1250,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((subject, function, first, second, third, fourth, fifth, sixth, seventh, eight, ninth, tenth, eleventh, twelfth, thirteenth), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first, state.second, state.third, state.fourth, state.fifth, state.sixth, state.seventh, state.eight, state.ninth, state.tenth, state.eleventh, state.twelfth, state.thirteenth);
@@ -1307,7 +1279,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((subject, function, first, second, third, fourth, fifth, sixth, seventh, eight, ninth, tenth, eleventh, twelfth, thirteenth, fourteenth), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first, state.second, state.third, state.fourth, state.fifth, state.sixth, state.seventh, state.eight, state.ninth, state.tenth, state.eleventh, state.twelfth, state.thirteenth, state.fourteenth);
@@ -1336,7 +1308,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((subject, function, first, second, third, fourth, fifth, sixth, seventh, eight, ninth, tenth, eleventh, twelfth, thirteenth, fourteenth, fifteenth), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first, state.second, state.third, state.fourth, state.fifth, state.sixth, state.seventh, state.eight, state.ninth, state.tenth, state.eleventh, state.twelfth, state.thirteenth, state.fourteenth, state.fifteenth);
@@ -1365,7 +1337,7 @@ namespace System.Reactive.Linq
                 var subject = new AsyncSubject<TResult>();
                 scheduler.ScheduleAction((subject, function, first, second, third, fourth, fifth, sixth, seventh, eight, ninth, tenth, eleventh, twelfth, thirteenth, fourteenth, fifteenth, sixteenth), state =>
                 {
-                    var result = default(TResult);
+                    TResult result;
                     try
                     {
                         result = state.function(state.first, state.second, state.third, state.fourth, state.fifth, state.sixth, state.seventh, state.eight, state.ninth, state.tenth, state.eleventh, state.twelfth, state.thirteenth, state.fourteenth, state.fifteenth, state.sixteenth);

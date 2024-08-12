@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -21,21 +21,21 @@ namespace System.Reactive
         {
             _gate.Wait(
                 (_observer, value),
-                tuple => tuple._observer.OnNext(tuple.value));
+                static tuple => tuple._observer.OnNext(tuple.value));
         }
 
         protected override void OnErrorCore(Exception exception)
         {
             _gate.Wait(
                 (_observer, exception),
-                tuple => tuple._observer.OnError(tuple.exception));
+                static tuple => tuple._observer.OnError(tuple.exception));
         }
 
         protected override void OnCompletedCore()
         {
             _gate.Wait(
                 _observer,
-                closureObserver => closureObserver.OnCompleted());
+                static closureObserver => closureObserver.OnCompleted());
         }
     }
 }

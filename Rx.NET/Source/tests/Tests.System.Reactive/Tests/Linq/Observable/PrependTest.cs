@@ -1,19 +1,20 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
 using System.Linq;
 using System.Reactive.Linq;
 using Microsoft.Reactive.Testing;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace ReactiveTests.Tests
 {
+    [TestClass]
     public class PrependTest : ReactiveTest
     {
 
-        [Fact]
+        [TestMethod]
         public void Prepend_ArgumentChecking()
         {
             var scheduler = new TestScheduler();
@@ -25,7 +26,7 @@ namespace ReactiveTests.Tests
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Prepend(someObservable, 1, default));
         }
 
-        [Fact]
+        [TestMethod]
         public void Prepend()
         {
             var scheduler = new TestScheduler();
@@ -47,7 +48,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Prepend_Scheduler()
         {
             var scheduler = new TestScheduler();
@@ -69,7 +70,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Prepend_Many()
         {
             var scheduler = new TestScheduler();
@@ -93,7 +94,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Prepend_Many_Take()
         {
             var scheduler = new TestScheduler();
@@ -116,7 +117,7 @@ namespace ReactiveTests.Tests
         }
 
 
-        [Fact]
+        [TestMethod]
         public void Prepend_Many_Scheduler()
         {
             var scheduler = new TestScheduler();
@@ -140,7 +141,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Prepend_Many_Take_Scheduler()
         {
             var scheduler = new TestScheduler();

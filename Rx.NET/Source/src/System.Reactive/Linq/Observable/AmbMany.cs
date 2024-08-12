@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -36,8 +36,8 @@ namespace System.Reactive.Linq.ObservableImpl
         protected override IDisposable Run(IObserver<T> observer)
         {
             var sourcesEnumerable = _sources;
-            var sources = default(IObservable<T>[]);
 
+            IObservable<T>[] sources;
             try
             {
                 sources = sourcesEnumerable.ToArray();
@@ -55,18 +55,22 @@ namespace System.Reactive.Linq.ObservableImpl
     internal sealed class AmbCoordinator<T> : IDisposable
     {
         private readonly IObserver<T> _downstream;
-        private readonly InnerObserver[] _observers;
+        private readonly InnerObserver?[] _observers;
         private int _winner;
 
         internal AmbCoordinator(IObserver<T> downstream, int n)
         {
             _downstream = downstream;
-            var o = new InnerObserver[n];
+
+            var o = new InnerObserver?[n];
+
             for (var i = 0; i < n; i++)
             {
                 o[i] = new InnerObserver(this, i);
             }
+
             _observers = o;
+
             Volatile.Write(ref _winner, -1);
         }
 
@@ -96,10 +100,12 @@ namespace System.Reactive.Linq.ObservableImpl
             for (var i = 0; i < _observers.Length; i++)
             {
                 var inner = Volatile.Read(ref _observers[i]);
+
                 if (inner == null)
                 {
                     break;
                 }
+
                 inner.Run(sources[i]);
             }
         }
@@ -123,8 +129,10 @@ namespace System.Reactive.Linq.ObservableImpl
                         Interlocked.Exchange(ref _observers[i], null)?.Dispose();
                     }
                 }
+
                 return true;
             }
+
             return false;
         }
 

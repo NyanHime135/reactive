@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Disposables;
@@ -27,14 +27,18 @@ namespace System.Reactive.Linq.ObservableImpl
             }
 
             var completeSignals = new Subject<object>();
-            var redo = default(IObservable<U>);
+
+            IObservable<U> redo;
 
             try
             {
                 redo = _handler(completeSignals);
+                
                 if (redo == null)
                 {
+#pragma warning disable CA2201 // (Do not raise reserved exception types.) Backwards compatibility prevents us from complying.
                     throw new NullReferenceException("The handler returned a null IObservable");
+#pragma warning restore CA2201
                 }
             }
             catch (Exception ex)
@@ -46,7 +50,7 @@ namespace System.Reactive.Linq.ObservableImpl
             var parent = new MainObserver(observer, _source, new RedoSerializedObserver<object>(completeSignals));
 
             var d = redo.SubscribeSafe(parent.HandlerConsumer);
-            Disposable.SetSingle(ref parent.HandlerUpstream, d);
+            parent._handlerUpstream.Disposable = d;
 
             parent.HandlerNext();
 
@@ -55,21 +59,22 @@ namespace System.Reactive.Linq.ObservableImpl
 
         private sealed class MainObserver : Sink<T>, IObserver<T>
         {
-            private readonly IObserver<Exception> _errorSignal;
+            private readonly IObservable<T> _source;
+            private readonly IObserver<object> _completeSignal;
 
             internal readonly HandlerObserver HandlerConsumer;
-            private readonly IObservable<T> _source;
-            private IDisposable _upstream;
 
-            internal IDisposable HandlerUpstream;
+            internal SingleAssignmentDisposableValue _handlerUpstream;
+
+            private IDisposable? _upstream;
             private int _trampoline;
             private int _halfSerializer;
-            private Exception _error;
+            private Exception? _error;
 
-            internal MainObserver(IObserver<T> downstream, IObservable<T> source, IObserver<Exception> errorSignal) : base(downstream)
+            internal MainObserver(IObserver<T> downstream, IObservable<T> source, IObserver<object> completeSignal) : base(downstream)
             {
                 _source = source;
-                _errorSignal = errorSignal;
+                _completeSignal = completeSignal;
                 HandlerConsumer = new HandlerObserver(this);
             }
 
@@ -77,9 +82,10 @@ namespace System.Reactive.Linq.ObservableImpl
             {
                 if (disposing)
                 {
-                    Disposable.TryDispose(ref _upstream);
-                    Disposable.TryDispose(ref HandlerUpstream);
+                    Disposable.Dispose(ref _upstream);
+                    _handlerUpstream.Dispose();
                 }
+
                 base.Dispose(disposing);
             }
 
@@ -87,9 +93,14 @@ namespace System.Reactive.Linq.ObservableImpl
             {
                 if (Disposable.TrySetSerial(ref _upstream, null))
                 {
-                    _errorSignal.OnNext(null);
-                }
+                    //
+                    // NB: Unfortunately this thing slipped in using `object` rather than `Unit`, which is our type used to represent nothing,
+                    //     so we have to stick with it and just let a `null` go in here. Users are supposed to ignore the elements produced,
+                    //     which `Unit` is making obvious since there's only one value. However, we're stuck here for compat reasons.
+                    //
 
+                    _completeSignal.OnNext(null!);
+                }
             }
 
             public void OnError(Exception error)
@@ -139,22 +150,12 @@ namespace System.Reactive.Linq.ObservableImpl
                     _main = main;
                 }
 
-                public void OnCompleted()
-                {
-                    _main.HandlerComplete();
-                }
+                public void OnCompleted() => _main.HandlerComplete();
 
-                public void OnError(Exception error)
-                {
-                    _main.HandlerError(error);
-                }
+                public void OnError(Exception error) => _main.HandlerError(error);
 
-                public void OnNext(U value)
-                {
-                    _main.HandlerNext();
-                }
+                public void OnNext(U value) => _main.HandlerNext();
             }
         }
-
     }
 }

@@ -1,7 +1,6 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
-
 
 namespace System.Reactive.Linq.ObservableImpl
 {
@@ -21,7 +20,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _stopPredicate = stopPredicate;
         }
 
-        protected override TakeUntilPredicateObserver CreateSink(IObserver<TSource> observer) => new TakeUntilPredicateObserver(observer, _stopPredicate);
+        protected override TakeUntilPredicateObserver CreateSink(IObserver<TSource> observer) => new(observer, _stopPredicate);
 
         protected override void Run(TakeUntilPredicateObserver sink) => sink.Run(_source);
 
@@ -29,21 +28,15 @@ namespace System.Reactive.Linq.ObservableImpl
         {
             private readonly Func<TSource, bool> _stopPredicate;
 
-            public TakeUntilPredicateObserver(IObserver<TSource> downstream,
-                Func<TSource, bool> predicate) : base(downstream)
+            public TakeUntilPredicateObserver(IObserver<TSource> downstream, Func<TSource, bool> predicate)
+                : base(downstream)
             {
                 _stopPredicate = predicate;
             }
 
-            public override void OnCompleted()
-            {
-                ForwardOnCompleted();
-            }
+            public override void OnCompleted() => ForwardOnCompleted();
 
-            public override void OnError(Exception error)
-            {
-                ForwardOnError(error);
-            }
+            public override void OnError(Exception error) => ForwardOnError(error);
 
             public override void OnNext(TSource value)
             {
@@ -59,6 +52,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     ForwardOnError(ex);
                     return;
                 }
+
                 if (shouldStop)
                 {
                     ForwardOnCompleted();

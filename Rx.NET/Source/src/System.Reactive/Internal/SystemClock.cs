@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -19,10 +19,10 @@ namespace System.Reactive.PlatformServices
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class SystemClock
     {
-        private static readonly Lazy<ISystemClock> ServiceSystemClock = new Lazy<ISystemClock>(InitializeSystemClock);
-        private static readonly Lazy<INotifySystemClockChanged> ServiceSystemClockChanged = new Lazy<INotifySystemClockChanged>(InitializeSystemClockChanged);
-        internal static readonly HashSet<WeakReference<LocalScheduler>> SystemClockChanged = new HashSet<WeakReference<LocalScheduler>>();
-        private static IDisposable _systemClockChangedHandlerCollector;
+        private static readonly Lazy<ISystemClock> ServiceSystemClock = new(InitializeSystemClock);
+        private static readonly Lazy<INotifySystemClockChanged> ServiceSystemClockChanged = new(InitializeSystemClockChanged);
+        internal static readonly HashSet<WeakReference<LocalScheduler>> SystemClockChanged = [];
+        private static IDisposable? _systemClockChangedHandlerCollector;
 
         private static int _refCount;
 
@@ -55,7 +55,7 @@ namespace System.Reactive.PlatformServices
             }
         }
 
-        internal static void OnSystemClockChanged(object sender, SystemClockChangedEventArgs e)
+        internal static void OnSystemClockChanged(object? sender, SystemClockChangedEventArgs e)
         {
             lock (SystemClockChanged)
             {
@@ -73,16 +73,12 @@ namespace System.Reactive.PlatformServices
 
         private static ISystemClock InitializeSystemClock()
         {
-#pragma warning disable CS0618 // Type or member is obsolete
             return PlatformEnlightenmentProvider.Current.GetService<ISystemClock>() ?? new DefaultSystemClock();
-#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         private static INotifySystemClockChanged InitializeSystemClockChanged()
         {
-#pragma warning disable CS0618 // Type or member is obsolete
             return PlatformEnlightenmentProvider.Current.GetService<INotifySystemClockChanged>() ?? new DefaultSystemClockMonitor();
-#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         internal static void Register(LocalScheduler scheduler)
@@ -121,16 +117,13 @@ namespace System.Reactive.PlatformServices
             //
             lock (SystemClockChanged)
             {
-                var remove = default(HashSet<WeakReference<LocalScheduler>>);
+                HashSet<WeakReference<LocalScheduler>>? remove = null;
 
                 foreach (var handler in SystemClockChanged)
                 {
                     if (!handler.TryGetTarget(out _))
                     {
-                        if (remove == null)
-                        {
-                            remove = new HashSet<WeakReference<LocalScheduler>>();
-                        }
+                        remove ??= [];
 
                         remove.Add(handler);
                     }
@@ -146,7 +139,7 @@ namespace System.Reactive.PlatformServices
 
                 if (SystemClockChanged.Count == 0)
                 {
-                    _systemClockChangedHandlerCollector.Dispose();
+                    _systemClockChangedHandlerCollector?.Dispose();
                     _systemClockChangedHandlerCollector = null;
                 }
             }

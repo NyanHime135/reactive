@@ -1,7 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
+using System.Diagnostics;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 
@@ -35,8 +36,9 @@ namespace System.Reactive.Linq.ObservableImpl
             public IAppendPrepend Append(TSource value)
             {
                 var prev = new Node<TSource>(_value);
-                var appendNode = default(Node<TSource>);
-                var prependNode = default(Node<TSource>);
+
+                Node<TSource> appendNode;
+                Node<TSource>? prependNode = null;
 
                 if (_append)
                 {
@@ -54,8 +56,9 @@ namespace System.Reactive.Linq.ObservableImpl
             public IAppendPrepend Prepend(TSource value)
             {
                 var prev = new Node<TSource>(_value);
-                var appendNode = default(Node<TSource>);
-                var prependNode = default(Node<TSource>);
+
+                Node<TSource>? appendNode = null;
+                Node<TSource> prependNode;
 
                 if (_append)
                 {
@@ -70,7 +73,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 return CreateAppendPrepend(prependNode, appendNode);
             }
 
-            private IAppendPrepend CreateAppendPrepend(Node<TSource> prepend, Node<TSource> append)
+            private IAppendPrepend CreateAppendPrepend(Node<TSource>? prepend, Node<TSource>? append)
             {
                 if (Scheduler is ISchedulerLongRunning longRunning)
                 {
@@ -92,7 +95,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 Scheduler = scheduler;
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run();
 
@@ -102,7 +105,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 private readonly TSource _value;
                 private readonly IScheduler _scheduler;
                 private readonly bool _append;
-                private IDisposable _schedulerDisposable;
+                private SingleAssignmentDisposableValue _schedulerDisposable;
 
                 public _(SingleValue parent, IObserver<TSource> observer)
                     : base(observer)
@@ -133,7 +136,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     if (_append)
                     {
                         var disposable = _scheduler.ScheduleAction(this, AppendValue);
-                        Disposable.TrySetSingle(ref _schedulerDisposable, disposable);
+                        _schedulerDisposable.Disposable = disposable;
                     }
                     else
                     {
@@ -151,7 +154,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (disposing)
                     {
-                        Disposable.TryDispose(ref _schedulerDisposable);
+                        _schedulerDisposable.Dispose();
                     }
                     base.Dispose(disposing);
                 }
@@ -161,12 +164,12 @@ namespace System.Reactive.Linq.ObservableImpl
         private sealed class Recursive : Producer<TSource, Recursive._>, IAppendPrepend
         {
             private readonly IObservable<TSource> _source;
-            private readonly Node<TSource> _appends;
-            private readonly Node<TSource> _prepends;
+            private readonly Node<TSource>? _appends;
+            private readonly Node<TSource>? _prepends;
 
             public IScheduler Scheduler { get; }
 
-            public Recursive(IObservable<TSource> source, Node<TSource> prepends, Node<TSource> appends, IScheduler scheduler)
+            public Recursive(IObservable<TSource> source, Node<TSource>? prepends, Node<TSource>? appends, IScheduler scheduler)
             {
                 _source = source;
                 _appends = appends;
@@ -186,7 +189,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     new Node<TSource>(_prepends, value), _appends, Scheduler);
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run();
 
@@ -197,11 +200,11 @@ namespace System.Reactive.Linq.ObservableImpl
             internal sealed class _ : IdentitySink<TSource>
             {
                 private readonly IObservable<TSource> _source;
-                private readonly Node<TSource> _appends;
+                private readonly Node<TSource>? _appends;
                 private readonly IScheduler _scheduler;
 
-                private Node<TSource> _currentPrependNode;
-                private TSource[] _appendArray;
+                private Node<TSource>? _currentPrependNode;
+                private TSource[]? _appendArray;
                 private int _currentAppendIndex;
                 private volatile bool _disposed;
 
@@ -226,7 +229,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         // We never allow the scheduled work to be cancelled. Instead, the _disposed flag
                         // is used to have PrependValues() bail out.
                         //
-                        _scheduler.Schedule(this, (innerScheduler, @this) => @this.PrependValues(innerScheduler));
+                        _scheduler.Schedule(this, static (innerScheduler, @this) => @this.PrependValues(innerScheduler));
                     }
                 }
 
@@ -239,11 +242,12 @@ namespace System.Reactive.Linq.ObservableImpl
                     else
                     {
                         _appendArray = _appends.ToReverseArray();
+
                         //
                         // We never allow the scheduled work to be cancelled. Instead, the _disposed flag
                         // is used to have `AppendValues` bail out.
                         //
-                        _scheduler.Schedule(this, (innerScheduler, @this) => @this.AppendValues(innerScheduler));
+                        _scheduler.Schedule(this, static (innerScheduler, @this) => @this.AppendValues(innerScheduler));
                     }
                 }
 
@@ -264,7 +268,9 @@ namespace System.Reactive.Linq.ObservableImpl
                         return Disposable.Empty;
                     }
 
-                    var current = _currentPrependNode.Value;
+                    Debug.Assert(_currentPrependNode != null);
+
+                    var current = _currentPrependNode!.Value;
                     ForwardOnNext(current);
 
                     _currentPrependNode = _currentPrependNode.Parent;
@@ -278,7 +284,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         // We never allow the scheduled work to be cancelled. Instead, the _disposed flag
                         // is used to have PrependValues() bail out.
                         //
-                        scheduler.Schedule(this, (innerScheduler, @this) => @this.PrependValues(innerScheduler));
+                        scheduler.Schedule(this, static (innerScheduler, @this) => @this.PrependValues(innerScheduler));
                     }
 
                     return Disposable.Empty;
@@ -291,7 +297,9 @@ namespace System.Reactive.Linq.ObservableImpl
                         return Disposable.Empty;
                     }
 
-                    var current = _appendArray[_currentAppendIndex];
+                    Debug.Assert(_appendArray != null);
+
+                    var current = _appendArray![_currentAppendIndex];
                     ForwardOnNext(current);
 
                     _currentAppendIndex++;
@@ -306,7 +314,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         // We never allow the scheduled work to be cancelled. Instead, the _disposed flag
                         // is used to have AppendValues() bail out.
                         //
-                        scheduler.Schedule(this, (innerScheduler, @this) => @this.AppendValues(innerScheduler));
+                        scheduler.Schedule(this, static (innerScheduler, @this) => @this.AppendValues(innerScheduler));
                     }
 
                     return Disposable.Empty;
@@ -317,13 +325,13 @@ namespace System.Reactive.Linq.ObservableImpl
         private sealed class LongRunning : Producer<TSource, LongRunning._>, IAppendPrepend
         {
             private readonly IObservable<TSource> _source;
-            private readonly Node<TSource> _appends;
-            private readonly Node<TSource> _prepends;
+            private readonly Node<TSource>? _appends;
+            private readonly Node<TSource>? _prepends;
             private readonly ISchedulerLongRunning _longRunningScheduler;
 
             public IScheduler Scheduler { get; }
 
-            public LongRunning(IObservable<TSource> source, Node<TSource> prepends, Node<TSource> appends, IScheduler scheduler, ISchedulerLongRunning longRunningScheduler)
+            public LongRunning(IObservable<TSource> source, Node<TSource>? prepends, Node<TSource>? appends, IScheduler scheduler, ISchedulerLongRunning longRunningScheduler)
             {
                 _source = source;
                 _appends = appends;
@@ -344,7 +352,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     new Node<TSource>(_prepends, value), _appends, Scheduler, _longRunningScheduler);
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run();
 
@@ -355,11 +363,11 @@ namespace System.Reactive.Linq.ObservableImpl
             internal sealed class _ : IdentitySink<TSource>
             {
                 private readonly IObservable<TSource> _source;
-                private readonly Node<TSource> _prepends; 
-                private readonly Node<TSource> _appends;
+                private readonly Node<TSource>? _prepends; 
+                private readonly Node<TSource>? _appends;
                 private readonly ISchedulerLongRunning _scheduler;
 
-                private IDisposable _schedulerDisposable;
+                private SerialDisposableValue _schedulerDisposable;
 
                 public _(LongRunning parent, IObserver<TSource> observer)
                     : base(observer)
@@ -378,8 +386,8 @@ namespace System.Reactive.Linq.ObservableImpl
                     }
                     else
                     {
-                        var disposable = _scheduler.ScheduleLongRunning(this, (@this, cancel) => @this.PrependValues(cancel));
-                        Disposable.TrySetSingle(ref _schedulerDisposable, disposable);
+                        var disposable = _scheduler.ScheduleLongRunning(this, static (@this, cancel) => @this.PrependValues(cancel));
+                        _schedulerDisposable.TrySetFirst(disposable);
                     }
                 }
 
@@ -391,8 +399,8 @@ namespace System.Reactive.Linq.ObservableImpl
                     }
                     else
                     {
-                        var disposable = _scheduler.ScheduleLongRunning(this, (@this, cancel) => @this.AppendValues(cancel));
-                        Disposable.TrySetSerial(ref _schedulerDisposable, disposable);
+                        var disposable = _scheduler.ScheduleLongRunning(this, static (@this, cancel) => @this.AppendValues(cancel));
+                        _schedulerDisposable.Disposable = disposable;
                     }
                 }
 
@@ -400,7 +408,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (disposing)
                     {
-                        Disposable.TryDispose(ref _schedulerDisposable);
+                        _schedulerDisposable.Dispose();
                     }
 
                     base.Dispose(disposing);
@@ -408,7 +416,9 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 private void PrependValues(ICancelable cancel)
                 {
-                    var current = _prepends;
+                    Debug.Assert(_prepends != null);
+
+                    var current = _prepends!;
 
                     while (!cancel.IsDisposed)
                     {
@@ -425,7 +435,9 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 private void AppendValues(ICancelable cancel)
                 {
-                    var array = _appends.ToReverseArray();
+                    Debug.Assert(_appends != null);
+
+                    var array = _appends!.ToReverseArray();
                     var i = 0;
 
                     while (!cancel.IsDisposed)
@@ -445,7 +457,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
         private sealed class Node<T>
         {
-            public readonly Node<T> Parent;
+            public readonly Node<T>? Parent;
             public readonly T Value;
             public readonly int Count;
 
@@ -454,7 +466,7 @@ namespace System.Reactive.Linq.ObservableImpl
             {
             }
 
-            public Node(Node<T> parent, T value)
+            public Node(Node<T>? parent, T value)
             {
                 Parent = parent;
                 Value = value;
@@ -480,7 +492,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 var current = this;
                 for (var i = Count - 1; i >= 0; i--)
                 {
-                    array[i] = current.Value;
+                    array[i] = current!.Value; // NB: Count property ensures non-nullability.
                     current = current.Parent;
                 }
                 return array;
@@ -496,7 +508,7 @@ namespace System.Reactive.Linq.ObservableImpl
             {
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run();
 

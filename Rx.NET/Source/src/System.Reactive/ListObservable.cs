@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections;
@@ -16,13 +16,12 @@ namespace System.Reactive
     /// Represents an object that retains the elements of the observable sequence and signals the end of the sequence.
     /// </summary>
     /// <typeparam name="T">The type of elements received from the source sequence.</typeparam>
-    [Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1710:IdentifiersShouldHaveCorrectSuffix", Justification = "By design; Observable suffix takes precedence.")]
     [Experimental]
     public class ListObservable<T> : IList<T>, IObservable<object>
     {
         private readonly IDisposable _subscription;
-        private readonly AsyncSubject<object> _subject = new AsyncSubject<object>();
-        private readonly List<T> _results = new List<T>();
+        private readonly AsyncSubject<object> _subject = new();
+        private readonly List<T> _results = [];
 
         /// <summary>
         /// Constructs an object that retains the values of source and signals the end of the sequence.
@@ -167,10 +166,7 @@ namespace System.Reactive
         /// <summary>
         /// Gets a value that indicates whether the ListObservable is read-only.
         /// </summary>
-        public bool IsReadOnly
-        {
-            get { return false; }
-        }
+        public bool IsReadOnly => false;
 
         /// <summary>
         /// Removes the first occurrence of a specific object from the ListObservable.

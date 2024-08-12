@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -20,7 +20,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _count = count;
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(_count, observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(_count, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
@@ -39,6 +39,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 public override void OnNext(TSource value)
                 {
                     _queue.Enqueue(value);
+
                     if (_queue.Count > _count)
                     {
                         ForwardOnNext(_queue.Dequeue());
@@ -60,7 +61,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _scheduler = scheduler;
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(_duration, observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(_duration, observer);
 
             protected override void Run(_ sink) => sink.Run(this);
 
@@ -76,7 +77,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     _queue = new Queue<Reactive.TimeInterval<TSource>>();
                 }
 
-                private IStopwatch _watch;
+                private IStopwatch? _watch;
 
                 public void Run(Time parent)
                 {
@@ -87,8 +88,10 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnNext(TSource value)
                 {
-                    var now = _watch.Elapsed;
+                    var now = _watch!.Elapsed;
+
                     _queue.Enqueue(new Reactive.TimeInterval<TSource>(value, now));
+
                     while (_queue.Count > 0 && now - _queue.Peek().Interval >= _duration)
                     {
                         ForwardOnNext(_queue.Dequeue().Value);
@@ -97,7 +100,8 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnCompleted()
                 {
-                    var now = _watch.Elapsed;
+                    var now = _watch!.Elapsed;
+
                     while (_queue.Count > 0 && now - _queue.Peek().Interval >= _duration)
                     {
                         ForwardOnNext(_queue.Dequeue().Value);

@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information.
 
 #if (CURRENT)
@@ -15,7 +15,9 @@ namespace Benchmarks.System.Reactive
     public class PrependVsStartWtihBenchmark
     {
         private int _store;
+#pragma warning disable IDE0052 // (Remove unread private members.) We want to store results to prevent the benchmarked code from being optimized out of existence.
         private IObservable<int> _obsStore;
+#pragma warning restore IDE0052
 
         [Benchmark(Baseline = true)]
         public void Prepend()
@@ -35,7 +37,7 @@ namespace Benchmarks.System.Reactive
         }
 
 
-        static readonly IObservable<int> _prependObservable = Observable.Empty<int>().Prepend(0);
+        private static readonly IObservable<int> _prependObservable = Observable.Empty<int>().Prepend(0);
         [Benchmark]
         public void Prepend_Subscribe()
         {
@@ -60,7 +62,7 @@ namespace Benchmarks.System.Reactive
                 .StartWith(0);
         }
 
-        static readonly IObservable<int> _startWithObservable = Observable.Empty<int>().StartWith(0);
+        private static readonly IObservable<int> _startWithObservable = Observable.Empty<int>().StartWith(0);
         [Benchmark]
         public void StartWith_Subscribe()
         {

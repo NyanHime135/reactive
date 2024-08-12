@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -359,7 +359,7 @@ namespace Tests
         [Fact]
         public async Task MaxAsync_TSource_Value_Empty()
         {
-            var xs = new DateTimeOffset[0].ToAsyncEnumerable();
+            var xs = Array.Empty<DateTimeOffset>().ToAsyncEnumerable();
             await AssertThrowsAsync<InvalidOperationException>(xs.MaxAsync().AsTask());
             await AssertThrowsAsync<InvalidOperationException>(xs.MaxAsync(x => x).AsTask());
             await AssertThrowsAsync<InvalidOperationException>(xs.MaxAwaitAsync(x => new ValueTask<DateTimeOffset>(x)).AsTask());
@@ -371,7 +371,7 @@ namespace Tests
         [Fact]
         public async Task MaxAsync_TSource_NonValue_Empty()
         {
-            var xs = new string[0].ToAsyncEnumerable();
+            var xs = Array.Empty<string>().ToAsyncEnumerable();
             Assert.Null(await xs.MaxAsync());
             Assert.Null(await xs.MaxAsync(x => x));
             Assert.Null(await xs.MaxAwaitAsync(x => new ValueTask<string>(x)));
@@ -383,7 +383,7 @@ namespace Tests
         [Fact]
         public async Task MaxAsync_TSource_NullableValue_Empty()
         {
-            var xs = new DateTimeOffset?[0].ToAsyncEnumerable();
+            var xs = Array.Empty<DateTimeOffset?>().ToAsyncEnumerable();
             Assert.Null(await xs.MaxAsync());
             Assert.Null(await xs.MaxAsync(x => x));
             Assert.Null(await xs.MaxAwaitAsync(x => new ValueTask<DateTimeOffset?>(x)));

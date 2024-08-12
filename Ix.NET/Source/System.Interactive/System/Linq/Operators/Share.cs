@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections;
@@ -56,15 +56,10 @@ namespace System.Linq
             return Create(() => selector(source.Share()).GetEnumerator());
         }
 
-        private class SharedBuffer<T> : IBuffer<T>
+        private class SharedBuffer<T>(IEnumerator<T> source) : IBuffer<T>
         {
+            private readonly IEnumerator<T> _source = source;
             private bool _disposed;
-            private IEnumerator<T> _source;
-
-            public SharedBuffer(IEnumerator<T> source)
-            {
-                _source = source;
-            }
 
             public IEnumerator<T> GetEnumerator()
             {
@@ -89,7 +84,6 @@ namespace System.Linq
                     if (!_disposed)
                     {
                         _source.Dispose();
-                        _source = null;
                     }
 
                     _disposed = true;
@@ -104,11 +98,15 @@ namespace System.Linq
 
                 private bool _disposed;
 
-                public ShareEnumerator(SharedBuffer<T> parent) => _parent = parent;
+                public ShareEnumerator(SharedBuffer<T> parent)
+                {
+                    _parent = parent;
+                    Current = default!;
+                }
 
                 public T Current { get; private set; }
 
-                object IEnumerator.Current => Current;
+                object? IEnumerator.Current => Current;
 
                 public void Dispose() => _disposed = true;
 
@@ -138,7 +136,7 @@ namespace System.Linq
                         return true;
                     }
                     _disposed = true;
-                    Current = default;
+                    Current = default!;
                     return false;
                 }
 

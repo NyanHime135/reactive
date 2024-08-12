@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -11,9 +11,26 @@ namespace System.Linq
 {
     public static partial class AsyncEnumerable
     {
+        /// <summary>
+        /// Produces the set union of two sequences by using the default equality comparer.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of the input sequences.</typeparam>
+        /// <param name="first">An async-enumerable sequence whose distinct elements form the first set for the union.</param>
+        /// <param name="second">An async-enumerable sequence whose distinct elements form the second set for the union.</param>
+        /// <returns>An async-enumerable sequence that contains the elements from both input sequences, excluding duplicates.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="first"/> or <paramref name="second"/> is null.</exception>
         public static IAsyncEnumerable<TSource> Union<TSource>(this IAsyncEnumerable<TSource> first, IAsyncEnumerable<TSource> second) =>
             Union(first, second, comparer: null);
 
+        /// <summary>
+        /// Produces the set union of two sequences by using a specified equality comparer.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of the input sequences.</typeparam>
+        /// <param name="first">An async-enumerable sequence whose distinct elements form the first set for the union.</param>
+        /// <param name="second">An async-enumerable sequence whose distinct elements form the second set for the union.</param>
+        /// <param name="comparer">The equality comparer to compare values.</param>
+        /// <returns>An async-enumerable sequence that contains the elements from both input sequences, excluding duplicates.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="first"/> or <paramref name="second"/> is null.</exception>
         public static IAsyncEnumerable<TSource> Union<TSource>(this IAsyncEnumerable<TSource> first, IAsyncEnumerable<TSource> second, IEqualityComparer<TSource>? comparer)
         {
             if (first == null)
@@ -35,7 +52,9 @@ namespace System.Linq
         /// <typeparam name="TSource">The type of the source enumerables.</typeparam>
         private abstract class UnionAsyncIterator<TSource> : AsyncIterator<TSource>, IAsyncIListProvider<TSource>
         {
+#pragma warning disable IDE1006 // Naming Styles
             internal readonly IEqualityComparer<TSource>? _comparer;
+#pragma warning restore IDE1006 // Naming Styles
             private IAsyncEnumerator<TSource>? _enumerator;
             private Set<TSource>? _set;
             private int _index;
@@ -88,7 +107,7 @@ namespace System.Linq
                 while (await _enumerator!.MoveNextAsync().ConfigureAwait(false))
                 {
                     var element = _enumerator.Current;
-                    if (set.Add(element))
+                    if (set!.Add(element))
                     {
                         _current = element;
                         return true;
@@ -110,10 +129,10 @@ namespace System.Linq
                             ++_index;
 
                             var enumerator = enumerable.GetAsyncEnumerator(_cancellationToken);
+                            await SetEnumeratorAsync(enumerator).ConfigureAwait(false);
 
                             if (await enumerator.MoveNextAsync().ConfigureAwait(false))
                             {
-                                await SetEnumeratorAsync(enumerator).ConfigureAwait(false);
                                 StoreFirst();
 
                                 _state = AsyncIteratorState.Iterating;
@@ -210,8 +229,6 @@ namespace System.Linq
             public UnionAsyncIterator2(IAsyncEnumerable<TSource> first, IAsyncEnumerable<TSource> second, IEqualityComparer<TSource>? comparer)
                 : base(comparer)
             {
-                Debug.Assert(first != null);
-                Debug.Assert(second != null);
                 _first = first;
                 _second = second;
             }
@@ -221,15 +238,13 @@ namespace System.Linq
             internal override IAsyncEnumerable<TSource>? GetEnumerable(int index)
             {
                 Debug.Assert(index >= 0 && index <= 2);
-                switch (index)
+
+                return index switch
                 {
-                    case 0:
-                        return _first;
-                    case 1:
-                        return _second;
-                    default:
-                        return null;
-                }
+                    0 => _first,
+                    1 => _second,
+                    _ => null,
+                };
             }
 
             internal override UnionAsyncIterator<TSource> Union(IAsyncEnumerable<TSource> next)

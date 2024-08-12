@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -23,7 +23,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _loopScheduler = loopScheduler;
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
@@ -41,13 +41,13 @@ namespace System.Reactive.Linq.ObservableImpl
                     _queue = new Queue<TSource>();
                 }
 
-                private IDisposable _loopDisposable;
+                private MultipleAssignmentDisposableValue _loopDisposable;
 
                 protected override void Dispose(bool disposing)
                 {
                     if (disposing)
                     {
-                        Disposable.TryDispose(ref _loopDisposable);
+                        _loopDisposable.Dispose();
                     }
 
                     base.Dispose(disposing);
@@ -70,12 +70,12 @@ namespace System.Reactive.Linq.ObservableImpl
                     var longRunning = _loopScheduler.AsLongRunning();
                     if (longRunning != null)
                     {
-                        Disposable.SetSingle(ref _loopDisposable, longRunning.ScheduleLongRunning(this, (@this, c) => @this.Loop(c)));
+                        _loopDisposable.TrySetFirst(longRunning.ScheduleLongRunning(this, static (@this, c) => @this.Loop(c)));
                     }
                     else
                     {
-                        var first = _loopScheduler.Schedule(this, (innerScheduler, @this) => @this.LoopRec(innerScheduler));
-                        Disposable.TrySetSingle(ref _loopDisposable, first);
+                        var first = _loopScheduler.Schedule(this, static (innerScheduler, @this) => @this.LoopRec(innerScheduler));
+                        _loopDisposable.TrySetFirst(first);
                     }
                 }
 
@@ -85,8 +85,8 @@ namespace System.Reactive.Linq.ObservableImpl
                     {
                         ForwardOnNext(_queue.Dequeue());
 
-                        var next = scheduler.Schedule(this, (innerScheduler, @this) => @this.LoopRec(innerScheduler));
-                        Disposable.TrySetMultiple(ref _loopDisposable, next);
+                        var next = scheduler.Schedule(this, static (innerScheduler, @this) => @this.LoopRec(innerScheduler));
+                        _loopDisposable.Disposable = next;
                     }
                     else
                     {
@@ -132,7 +132,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _loopScheduler = loopScheduler;
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(this, observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(this, observer);
 
             protected override void Run(_ sink) => sink.Run(_source, _scheduler);
 
@@ -150,8 +150,8 @@ namespace System.Reactive.Linq.ObservableImpl
                     _queue = new Queue<Reactive.TimeInterval<TSource>>();
                 }
 
-                private IDisposable _loopDisposable;
-                private IStopwatch _watch;
+                private MultipleAssignmentDisposableValue _loopDisposable;
+                private IStopwatch? _watch;
 
                 public void Run(IObservable<TSource> source, IScheduler scheduler)
                 {
@@ -163,14 +163,15 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (disposing)
                     {
-                        Disposable.TryDispose(ref _loopDisposable);
+                        _loopDisposable.Dispose();
                     }
+
                     base.Dispose(disposing);
                 }
 
                 public override void OnNext(TSource value)
                 {
-                    var now = _watch.Elapsed;
+                    var now = _watch!.Elapsed;
                     _queue.Enqueue(new Reactive.TimeInterval<TSource>(value, now));
                     Trim(now);
                 }
@@ -179,18 +180,18 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     DisposeUpstream();
 
-                    var now = _watch.Elapsed;
+                    var now = _watch!.Elapsed;
                     Trim(now);
 
                     var longRunning = _loopScheduler.AsLongRunning();
                     if (longRunning != null)
                     {
-                        Disposable.SetSingle(ref _loopDisposable, longRunning.ScheduleLongRunning(this, (@this, c) => @this.Loop(c)));
+                        _loopDisposable.TrySetFirst(longRunning.ScheduleLongRunning(this, static (@this, c) => @this.Loop(c)));
                     }
                     else
                     {
-                        var first = _loopScheduler.Schedule(this, (innerScheduler, @this) => @this.LoopRec(innerScheduler));
-                        Disposable.TrySetSingle(ref _loopDisposable, first);
+                        var first = _loopScheduler.Schedule(this, static (innerScheduler, @this) => @this.LoopRec(innerScheduler));
+                        _loopDisposable.TrySetFirst(first);
                     }
                 }
 
@@ -200,13 +201,14 @@ namespace System.Reactive.Linq.ObservableImpl
                     {
                         ForwardOnNext(_queue.Dequeue().Value);
 
-                        var next = scheduler.Schedule(this, (innerScheduler, @this) => @this.LoopRec(innerScheduler));
-                        Disposable.TrySetMultiple(ref _loopDisposable, next);
+                        var next = scheduler.Schedule(this, static (innerScheduler, @this) => @this.LoopRec(innerScheduler));
+                        _loopDisposable.Disposable = next;
                     }
                     else
                     {
                         ForwardOnCompleted();
                     }
+
                     return Disposable.Empty;
                 }
 

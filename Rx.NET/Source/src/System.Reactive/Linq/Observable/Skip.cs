@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -32,7 +32,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 return new Count(_source, _count + count);
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(_count, observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(_count, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
@@ -92,7 +92,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 return new Time(_source, duration, _scheduler);
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(observer);
 
             protected override void Run(_ sink) => sink.Run(this);
 
@@ -105,20 +105,21 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                 }
 
-                private IDisposable _sourceDisposable;
+                private SingleAssignmentDisposableValue _sourceDisposable;
 
                 public void Run(Time parent)
                 {
                     SetUpstream(parent._scheduler.ScheduleAction(this, parent._duration, state => state.Tick()));
-                    Disposable.SetSingle(ref _sourceDisposable, parent._source.SubscribeSafe(this));
+                    _sourceDisposable.Disposable = parent._source.SubscribeSafe(this);
                 }
 
                 protected override void Dispose(bool disposing)
                 {
                     if (disposing)
                     {
-                        Disposable.TryDispose(ref _sourceDisposable);
+                        _sourceDisposable.Dispose();
                     }
+
                     base.Dispose(disposing);
                 }
 

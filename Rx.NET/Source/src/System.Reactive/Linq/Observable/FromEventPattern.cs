@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -17,7 +17,7 @@ namespace System.Reactive.Linq.ObservableImpl
     {
         public sealed class Impl<TDelegate, TEventArgs> : ClassicEventProducer<TDelegate, EventPattern<TEventArgs>>
         {
-            private readonly Func<EventHandler<TEventArgs>, TDelegate> _conversion;
+            private readonly Func<EventHandler<TEventArgs>, TDelegate>? _conversion;
 
             public Impl(Action<TDelegate> addHandler, Action<TDelegate> removeHandler, IScheduler scheduler)
                 : base(addHandler, removeHandler, scheduler)
@@ -32,12 +32,12 @@ namespace System.Reactive.Linq.ObservableImpl
 
             protected override TDelegate GetHandler(Action<EventPattern<TEventArgs>> onNext)
             {
-                var handler = default(TDelegate);
+                TDelegate handler;
 
                 if (_conversion == null)
                 {
                     Action<object, TEventArgs> h = (sender, eventArgs) => onNext(new EventPattern<TEventArgs>(sender, eventArgs));
-                    handler = ReflectionUtils.CreateDelegate<TDelegate>(h, typeof(Action<object, TEventArgs>).GetMethod(nameof(Action<object, TEventArgs>.Invoke)));
+                    handler = ReflectionUtils.CreateDelegate<TDelegate>(h, typeof(Action<object, TEventArgs>).GetMethod(nameof(Action<object, TEventArgs>.Invoke))!);
                 }
                 else
                 {
@@ -58,29 +58,23 @@ namespace System.Reactive.Linq.ObservableImpl
             protected override TDelegate GetHandler(Action<EventPattern<TSender, TEventArgs>> onNext)
             {
                 Action<TSender, TEventArgs> h = (sender, eventArgs) => onNext(new EventPattern<TSender, TEventArgs>(sender, eventArgs));
-                return ReflectionUtils.CreateDelegate<TDelegate>(h, typeof(Action<TSender, TEventArgs>).GetMethod(nameof(Action<TSender, TEventArgs>.Invoke)));
+                return ReflectionUtils.CreateDelegate<TDelegate>(h, typeof(Action<TSender, TEventArgs>).GetMethod(nameof(Action<TSender, TEventArgs>.Invoke))!);
             }
         }
 
         public sealed class Handler<TSender, TEventArgs, TResult> : EventProducer<Delegate, TResult>
         {
-            private readonly object _target;
+            private readonly object? _target;
             private readonly Type _delegateType;
             private readonly MethodInfo _addMethod;
             private readonly MethodInfo _removeMethod;
             private readonly Func<TSender, TEventArgs, TResult> _getResult;
-#if HAS_WINRT
             private readonly bool _isWinRT;
-#endif
 
-            public Handler(object target, Type delegateType, MethodInfo addMethod, MethodInfo removeMethod, Func<TSender, TEventArgs, TResult> getResult, bool isWinRT, IScheduler scheduler)
+            public Handler(object? target, Type delegateType, MethodInfo addMethod, MethodInfo removeMethod, Func<TSender, TEventArgs, TResult> getResult, bool isWinRT, IScheduler scheduler)
                 : base(scheduler)
             {
-#if HAS_WINRT
                 _isWinRT = isWinRT;
-#else
-                System.Diagnostics.Debug.Assert(!isWinRT);
-#endif
                 _target = target;
                 _delegateType = delegateType;
                 _addMethod = addMethod;
@@ -91,27 +85,25 @@ namespace System.Reactive.Linq.ObservableImpl
             protected override Delegate GetHandler(Action<TResult> onNext)
             {
                 Action<TSender, TEventArgs> h = (sender, eventArgs) => onNext(_getResult(sender, eventArgs));
-                return ReflectionUtils.CreateDelegate(_delegateType, h, typeof(Action<TSender, TEventArgs>).GetMethod(nameof(Action<TSender, TEventArgs>.Invoke)));
+                return ReflectionUtils.CreateDelegate(_delegateType, h, typeof(Action<TSender, TEventArgs>).GetMethod(nameof(Action<TSender, TEventArgs>.Invoke))!);
             }
 
             protected override IDisposable AddHandler(Delegate handler)
             {
-                var removeHandler = default(Action);
+                Action removeHandler;
 
                 try
                 {
-#if HAS_WINRT
                     if (_isWinRT)
                     {
                         removeHandler = AddHandlerCoreWinRT(handler);
                     }
                     else
-#endif
                     {
                         removeHandler = AddHandlerCore(handler);
                     }
                 }
-                catch (TargetInvocationException tie)
+                catch (TargetInvocationException tie) when (tie.InnerException != null)
                 {
                     throw tie.InnerException;
                 }
@@ -121,7 +113,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
             private sealed class RemoveHandlerDisposable : IDisposable
             {
-                private Action _removeHandler;
+                private Action? _removeHandler;
 
                 public RemoveHandlerDisposable(Action removeHandler)
                 {
@@ -134,7 +126,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     {
                         Interlocked.Exchange(ref _removeHandler, null)?.Invoke();
                     }
-                    catch (TargetInvocationException tie)
+                    catch (TargetInvocationException tie) when (tie.InnerException != null)
                     {
                         throw tie.InnerException;
                     }
@@ -143,17 +135,15 @@ namespace System.Reactive.Linq.ObservableImpl
 
             private Action AddHandlerCore(Delegate handler)
             {
-                _addMethod.Invoke(_target, new object[] { handler });
-                return () => _removeMethod.Invoke(_target, new object[] { handler });
+                _addMethod.Invoke(_target, [handler]);
+                return () => _removeMethod.Invoke(_target, [handler]);
             }
 
-#if HAS_WINRT
             private Action AddHandlerCoreWinRT(Delegate handler)
             {
-                var token = _addMethod.Invoke(_target, new object[] { handler });
-                return () => _removeMethod.Invoke(_target, new[] { token });
+                var token = _addMethod.Invoke(_target, [handler]);
+                return () => _removeMethod.Invoke(_target, [token]);
             }
-#endif
         }
     }
 }

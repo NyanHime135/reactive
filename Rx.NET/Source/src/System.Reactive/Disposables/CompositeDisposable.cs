@@ -1,9 +1,10 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 
 namespace System.Reactive.Disposables
@@ -14,11 +15,18 @@ namespace System.Reactive.Disposables
     [Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1710:IdentifiersShouldHaveCorrectSuffix", Justification = "Backward compat + ideally want to get rid of the ICollection nature of the type.")]
     public sealed class CompositeDisposable : ICollection<IDisposable>, ICancelable
     {
-        private readonly object _gate = new object();
+        private readonly object _gate = new();
         private bool _disposed;
-        private List<IDisposable> _disposables;
+        private object _disposables;
         private int _count;
         private const int ShrinkThreshold = 64;
+
+        // The maximum number of items to keep in a list before switching to a dictionary.
+        // Issue https://github.com/dotnet/reactive/issues/2005 reported that when a SelectMany
+        // observes large numbers (1000s) of observables, the CompositeDisposable it uses to
+        // keep track of all of the inner observables it creates becomes a bottleneck when the
+        // subscription completes.
+        private const int MaximumLinearSearchThreshold = 1024;
 
         // Default initial capacity of the _disposables list in case
         // The number of items is not known upfront
@@ -29,7 +37,7 @@ namespace System.Reactive.Disposables
         /// </summary>
         public CompositeDisposable()
         {
-            _disposables = new List<IDisposable>();
+            _disposables = new List<IDisposable?>();
         }
 
         /// <summary>
@@ -44,7 +52,7 @@ namespace System.Reactive.Disposables
                 throw new ArgumentOutOfRangeException(nameof(capacity));
             }
 
-            _disposables = new List<IDisposable>(capacity);
+            _disposables = new List<IDisposable?>(capacity);
         }
 
         /// <summary>
@@ -60,7 +68,11 @@ namespace System.Reactive.Disposables
                 throw new ArgumentNullException(nameof(disposables));
             }
 
-            Init(disposables, disposables.Length);
+            (_disposables, _) = ToListOrDictionary(disposables);
+
+            // _count can be read by other threads and thus should be properly visible
+            // also releases the _disposables contents so it becomes thread-safe
+            Volatile.Write(ref _count, disposables.Length);
         }
 
         /// <summary>
@@ -76,27 +88,43 @@ namespace System.Reactive.Disposables
                 throw new ArgumentNullException(nameof(disposables));
             }
 
-            // If the disposables is a collection, get its size
-            // and use it as a capacity hint for the copy.
-            if (disposables is ICollection<IDisposable> c)
-            {
-                Init(disposables, c.Count);
-            }
-            else
-            {
-                // Unknown sized disposables, use the default capacity hint
-                Init(disposables, DefaultCapacity);
-            }
+            (_disposables, var count) = ToListOrDictionary(disposables);
+
+            // _count can be read by other threads and thus should be properly visible
+            // also releases the _disposables contents so it becomes thread-safe
+            Volatile.Write(ref _count, count);
         }
 
-        /// <summary>
-        /// Initialize the inner disposable list and count fields.
-        /// </summary>
-        /// <param name="disposables">The enumerable sequence of disposables.</param>
-        /// <param name="capacityHint">The number of items expected from <paramref name="disposables"/></param>
-        private void Init(IEnumerable<IDisposable> disposables, int capacityHint)
+        private static (object Collection, int Count) ToListOrDictionary(IEnumerable<IDisposable> disposables)
         {
-            var list = new List<IDisposable>(capacityHint);
+            var capacity = disposables switch
+            {
+                IDisposable[] a => a.Length,
+                ICollection<IDisposable> c => c.Count,
+                _ => DefaultCapacity
+            };
+
+            if (capacity > MaximumLinearSearchThreshold)
+            {
+                var dictionary = new Dictionary<IDisposable, int>(capacity);
+                var disposableCount = 0;
+                foreach (var d in disposables)
+                {
+                    if (d == null)
+                    {
+                        throw new ArgumentException(Strings_Core.DISPOSABLES_CANT_CONTAIN_NULL, nameof(disposables));
+                    }
+
+                    dictionary.TryGetValue(d, out var thisDisposableCount);
+                    dictionary[d] = thisDisposableCount + 1;
+
+                    disposableCount += 1;
+                }
+
+                return (dictionary, disposableCount);
+            }
+
+            var list = new List<IDisposable?>(capacity);
 
             // do the copy and null-check in one step to avoid a
             // second loop for just checking for null items
@@ -106,13 +134,18 @@ namespace System.Reactive.Disposables
                 {
                     throw new ArgumentException(Strings_Core.DISPOSABLES_CANT_CONTAIN_NULL, nameof(disposables));
                 }
+
                 list.Add(d);
             }
 
-            _disposables = list;
-            // _count can be read by other threads and thus should be properly visible
-            // also releases the _disposables contents so it becomes thread-safe
-            Volatile.Write(ref _count, _disposables.Count);
+            if (list.Count > MaximumLinearSearchThreshold)
+            {
+                // We end up here if we didn't know the count up front because it's an
+                // IEnumerable<IDisposable> and not an ICollection<IDisposable>, and it then turns out that
+                // the number of items exceeds our maximum tolerance for linear search.
+            }
+
+            return (list, list.Count);
         }
 
         /// <summary>
@@ -136,7 +169,38 @@ namespace System.Reactive.Disposables
             {
                 if (!_disposed)
                 {
-                    _disposables.Add(item);
+                    if (_disposables is List<IDisposable?> listDisposables)
+                    {
+                        listDisposables.Add(item);
+
+                        // Once we get to thousands of items (which happens with wide fan-out/in configurations)
+                        // the cost of linear search becomes too high. We switch to a dictionary at that point.
+                        // See https://github.com/dotnet/reactive/issues/2005
+                        if (listDisposables.Count > MaximumLinearSearchThreshold)
+                        {
+                            // If we've blown through this threshold, chances are there's more to come,
+                            // so allocate some more spare capacity.
+                            var dictionary = new Dictionary<IDisposable, int>(listDisposables.Count + (listDisposables.Count / 4));
+                            foreach (var d in listDisposables)
+                            {
+                                if (d is not null)
+                                {
+                                    dictionary.TryGetValue(d, out var thisDisposableCount);
+                                    dictionary[d] = thisDisposableCount + 1;
+                                }
+                            }
+
+                            _disposables = dictionary;
+                        }
+
+                    }
+                    else
+                    {
+                        var dictionaryDisposables = (Dictionary<IDisposable, int>)_disposables;
+                        dictionaryDisposables.TryGetValue(item, out var thisDisposableCount);
+                        dictionaryDisposables[item] = thisDisposableCount + 1;
+                    }
+
                     // If read atomically outside the lock, it should be written atomically inside
                     // the plain read on _count is fine here because manipulation always happens
                     // from inside a lock.
@@ -181,28 +245,49 @@ namespace System.Reactive.Disposables
                 // read fields as infrequently as possible
                 var current = _disposables;
 
-                var i = current.IndexOf(item);
-                if (i < 0)
+                if (current is List<IDisposable?> currentList)
                 {
-                    // not found, just return
-                    return false;
-                }
-
-                current[i] = null;
-
-                if (current.Capacity > ShrinkThreshold && _count < current.Capacity / 2)
-                {
-                    var fresh = new List<IDisposable>(current.Capacity / 2);
-
-                    foreach (var d in current)
+                    var i = currentList.IndexOf(item);
+                    if (i < 0)
                     {
-                        if (d != null)
-                        {
-                            fresh.Add(d);
-                        }
+                        // not found, just return
+                        return false;
                     }
 
-                    _disposables = fresh;
+                    currentList[i] = null;
+
+                    if (currentList.Capacity > ShrinkThreshold && _count < currentList.Capacity / 2)
+                    {
+                        var fresh = new List<IDisposable?>(currentList.Capacity / 2);
+
+                        foreach (var d in currentList)
+                        {
+                            if (d != null)
+                            {
+                                fresh.Add(d);
+                            }
+                        }
+
+                        _disposables = fresh;
+                    } 
+                }
+                else
+                {
+                    var dictionaryDisposables = (Dictionary<IDisposable, int>)_disposables;
+                    if (!dictionaryDisposables.TryGetValue(item, out var thisDisposableCount))
+                    {
+                        return false;
+                    }
+
+                    thisDisposableCount -= 1;
+                    if (thisDisposableCount == 0)
+                    {
+                        dictionaryDisposables.Remove(item);
+                    }
+                    else
+                    {
+                        dictionaryDisposables[item] = thisDisposableCount;
+                    }
                 }
 
                 // make sure the Count property sees an atomic update
@@ -222,27 +307,42 @@ namespace System.Reactive.Disposables
         /// </summary>
         public void Dispose()
         {
-            var currentDisposables = default(List<IDisposable>);
+            List<IDisposable?>? currentDisposablesList = null;
+            Dictionary<IDisposable, int>? currentDisposablesDictionary = null;
+
             lock (_gate)
             {
                 if (!_disposed)
                 {
-                    currentDisposables = _disposables;
+                    currentDisposablesList = _disposables as List<IDisposable?>;
+                    currentDisposablesDictionary = _disposables as Dictionary<IDisposable, int>;
+
                     // nulling out the reference is faster no risk to
                     // future Add/Remove because _disposed will be true
                     // and thus _disposables won't be touched again.
-                    _disposables = null;
+                    _disposables = null!; // NB: All accesses are guarded by _disposed checks.
 
                     Volatile.Write(ref _count, 0);
                     Volatile.Write(ref _disposed, true);
                 }
             }
 
-            if (currentDisposables != null)
+            if (currentDisposablesList is not null)
             {
-                foreach (var d in currentDisposables)
+                foreach (var d in currentDisposablesList)
                 {
+                    // Although we don't all nulls in from the outside, we implement Remove
+                    // by setting entries to null, and shrinking the list if it gets too sparse.
+                    // So some entries may be null.
                     d?.Dispose();
+                }
+            }
+
+            if (currentDisposablesDictionary is not null)
+            {
+                foreach (var kv in currentDisposablesDictionary)
+                {
+                    kv.Key.Dispose();
                 }
             }
         }
@@ -252,7 +352,8 @@ namespace System.Reactive.Disposables
         /// </summary>
         public void Clear()
         {
-            var previousDisposables = default(IDisposable[]);
+            IDisposable?[] previousDisposables;
+
             lock (_gate)
             {
                 // disposed composites are always clear
@@ -263,8 +364,18 @@ namespace System.Reactive.Disposables
 
                 var current = _disposables;
 
-                previousDisposables = current.ToArray();
-                current.Clear();
+                if (current is List<IDisposable?> currentList)
+                {
+                    previousDisposables = currentList.ToArray();
+                    currentList.Clear();
+                }
+                else
+                {
+                    var currentDictionary = (Dictionary<IDisposable, int>)current;
+                    previousDisposables = new IDisposable[currentDictionary.Count];
+                    currentDictionary.Keys.CopyTo(previousDisposables!, 0);
+                    currentDictionary.Clear();
+                }
 
                 Volatile.Write(ref _count, 0);
             }
@@ -294,7 +405,11 @@ namespace System.Reactive.Disposables
                 {
                     return false;
                 }
-                return _disposables.Contains(item);
+
+                var current = _disposables;
+                return current is List<IDisposable?> list
+                    ? list.Contains(item)
+                    : ((Dictionary<IDisposable, int>) current).ContainsKey(item);
             }
         }
 
@@ -331,12 +446,29 @@ namespace System.Reactive.Disposables
                     // to accommodate all _count disposables in this composite
                     throw new ArgumentOutOfRangeException(nameof(arrayIndex));
                 }
+                
                 var i = arrayIndex;
-                foreach (var d in _disposables)
+
+                var current = _disposables;
+
+                if (current is List<IDisposable?> currentList)
                 {
-                    if (d != null)
+                    foreach (var d in currentList)
                     {
-                        array[i++] = d;
+                        if (d != null)
+                        {
+                            array[i++] = d;
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var kv in (Dictionary<IDisposable, int>)current)
+                    {
+                        for (var j = 0; j < kv.Value; j++)
+                        {
+                            array[i++] = kv.Key;
+                        }
                     }
                 }
             }
@@ -359,9 +491,12 @@ namespace System.Reactive.Disposables
                 {
                     return EmptyEnumerator;
                 }
+
+                var current = _disposables;
+
                 // the copy is unavoidable but the creation
                 // of an outer IEnumerable is avoidable
-                return new CompositeEnumerator(_disposables.ToArray());
+                return new CompositeEnumerator(current is List<IDisposable?> currentList ? currentList.ToArray() : ((Dictionary<IDisposable, int>)current).Keys.ToArray());
             }
         }
 
@@ -381,25 +516,25 @@ namespace System.Reactive.Disposables
         /// method to avoid allocation on disposed or empty composites.
         /// </summary>
         private static readonly CompositeEnumerator EmptyEnumerator =
-            new CompositeEnumerator(Array.Empty<IDisposable>());
+            new([]);
 
         /// <summary>
         /// An enumerator for an array of disposables.
         /// </summary>
         private sealed class CompositeEnumerator : IEnumerator<IDisposable>
         {
-            private readonly IDisposable[] _disposables;
+            private readonly IDisposable?[] _disposables;
             private int _index;
 
-            public CompositeEnumerator(IDisposable[] disposables)
+            public CompositeEnumerator(IDisposable?[] disposables)
             {
                 _disposables = disposables;
                 _index = -1;
             }
 
-            public IDisposable Current => _disposables[_index];
+            public IDisposable Current => _disposables[_index]!; // NB: _index is only advanced to non-null positions.
 
-            object IEnumerator.Current => _disposables[_index];
+            object IEnumerator.Current => _disposables[_index]!;
 
             public void Dispose()
             {
@@ -418,10 +553,12 @@ namespace System.Reactive.Disposables
                 for (; ; )
                 {
                     var idx = ++_index;
+                    
                     if (idx >= disposables.Length)
                     {
                         return false;
                     }
+
                     // inlined that filter for null elements
                     if (disposables[idx] != null)
                     {

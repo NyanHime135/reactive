@@ -1,8 +1,10 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
+using System.Diagnostics.CodeAnalysis;
 using System.Reactive.Disposables;
+using System.Threading;
 
 namespace System.Reactive.Subjects
 {
@@ -15,12 +17,12 @@ namespace System.Reactive.Subjects
     {
         #region Fields
 
-        private readonly object _gate = new object();
+        private readonly object _gate = new();
 
         private ImmutableList<IObserver<T>> _observers;
         private bool _isStopped;
         private T _value;
-        private Exception _exception;
+        private Exception? _exception;
         private bool _isDisposed;
 
         #endregion
@@ -82,10 +84,7 @@ namespace System.Reactive.Subjects
                 {
                     CheckDisposed();
 
-                    if (_exception != null)
-                    {
-                        throw _exception;
-                    }
+                    _exception?.Throw();
 
                     return _value;
                 }
@@ -109,7 +108,7 @@ namespace System.Reactive.Subjects
         /// In some cases, it may be necessary for a caller to use external synchronization to avoid race conditions.
         /// </alert>
         /// </remarks>
-        public bool TryGetValue(out T value)
+        public bool TryGetValue([MaybeNullWhen(false)] out T value)
         {
             lock (_gate)
             {
@@ -119,10 +118,7 @@ namespace System.Reactive.Subjects
                     return false;
                 }
 
-                if (_exception != null)
-                {
-                    throw _exception;
-                }
+                _exception?.Throw();
 
                 value = _value;
                 return true;
@@ -136,7 +132,8 @@ namespace System.Reactive.Subjects
         /// </summary>
         public override void OnCompleted()
         {
-            var os = default(IObserver<T>[]);
+            IObserver<T>[]? os = null;
+
             lock (_gate)
             {
                 CheckDisposed();
@@ -170,7 +167,8 @@ namespace System.Reactive.Subjects
                 throw new ArgumentNullException(nameof(error));
             }
 
-            var os = default(IObserver<T>[]);
+            IObserver<T>[]? os = null;
+
             lock (_gate)
             {
                 CheckDisposed();
@@ -199,7 +197,8 @@ namespace System.Reactive.Subjects
         /// <param name="value">The value to send to all observers.</param>
         public override void OnNext(T value)
         {
-            var os = default(IObserver<T>[]);
+            IObserver<T>[]? os = null;
+
             lock (_gate)
             {
                 CheckDisposed();
@@ -237,7 +236,7 @@ namespace System.Reactive.Subjects
                 throw new ArgumentNullException(nameof(observer));
             }
 
-            var ex = default(Exception);
+            Exception? ex;
 
             lock (_gate)
             {
@@ -265,6 +264,17 @@ namespace System.Reactive.Subjects
             return Disposable.Empty;
         }
 
+        private void Unsubscribe(IObserver<T> observer)
+        {
+            lock (_gate)
+            {
+                if (!_isDisposed)
+                {
+                    _observers = _observers.Remove(observer);
+                }
+            }
+        }
+
         #endregion
 
         #region IDisposable implementation
@@ -277,8 +287,8 @@ namespace System.Reactive.Subjects
             lock (_gate)
             {
                 _isDisposed = true;
-                _observers = null;
-                _value = default;
+                _observers = null!; // NB: Disposed checks happen prior to accessing _observers.
+                _value = default!;
                 _exception = null;
             }
         }
@@ -295,8 +305,8 @@ namespace System.Reactive.Subjects
 
         private sealed class Subscription : IDisposable
         {
-            private readonly BehaviorSubject<T> _subject;
-            private IObserver<T> _observer;
+            private BehaviorSubject<T> _subject;
+            private IObserver<T>? _observer;
 
             public Subscription(BehaviorSubject<T> subject, IObserver<T> observer)
             {
@@ -306,17 +316,14 @@ namespace System.Reactive.Subjects
 
             public void Dispose()
             {
-                if (_observer != null)
+                var observer = Interlocked.Exchange(ref _observer, null);
+                if (observer == null)
                 {
-                    lock (_subject._gate)
-                    {
-                        if (!_subject._isDisposed && _observer != null)
-                        {
-                            _subject._observers = _subject._observers.Remove(_observer);
-                            _observer = null;
-                        }
-                    }
+                    return;
                 }
+
+                _subject.Unsubscribe(observer);
+                _subject = null!;
             }
         }
 

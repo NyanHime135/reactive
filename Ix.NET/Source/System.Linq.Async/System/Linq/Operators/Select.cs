@@ -1,9 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,6 +10,15 @@ namespace System.Linq
 {
     public static partial class AsyncEnumerable
     {
+        /// <summary>
+        /// Projects each element of an async-enumerable sequence into a new form.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
+        /// <typeparam name="TResult">The type of the elements in the result sequence, obtained by running the selector function for each element in the source sequence.</typeparam>
+        /// <param name="source">A sequence of elements to invoke a transform function on.</param>
+        /// <param name="selector">A transform function to apply to each source element.</param>
+        /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="selector"/> is null.</exception>
         public static IAsyncEnumerable<TResult> Select<TSource, TResult>(this IAsyncEnumerable<TSource> source, Func<TSource, TResult> selector)
         {
             if (source == null)
@@ -18,17 +26,23 @@ namespace System.Linq
             if (selector == null)
                 throw Error.ArgumentNull(nameof(selector));
 
-            switch (source)
+            return source switch
             {
-                case AsyncIterator<TSource> iterator:
-                    return iterator.Select(selector);
-                case IList<TSource> list:
-                    return new SelectIListIterator<TSource, TResult>(list, selector);
-            }
-
-            return new SelectEnumerableAsyncIterator<TSource, TResult>(source, selector);
+                AsyncIterator<TSource> iterator => iterator.Select(selector),
+                IList<TSource> list => new SelectIListIterator<TSource, TResult>(list, selector),
+                _ => new SelectEnumerableAsyncIterator<TSource, TResult>(source, selector),
+            };
         }
 
+        /// <summary>
+        /// Projects each element of an async-enumerable sequence into a new form by incorporating the element's index.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
+        /// <typeparam name="TResult">The type of the elements in the result sequence, obtained by running the selector function for each element in the source sequence.</typeparam>
+        /// <param name="source">A sequence of elements to invoke a transform function on.</param>
+        /// <param name="selector">A transform function to apply to each source element; the second parameter of the function represents the index of the source element.</param>
+        /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="selector"/> is null.</exception>
         public static IAsyncEnumerable<TResult> Select<TSource, TResult>(this IAsyncEnumerable<TSource> source, Func<TSource, int, TResult> selector)
         {
             if (source == null)
@@ -36,9 +50,9 @@ namespace System.Linq
             if (selector == null)
                 throw Error.ArgumentNull(nameof(selector));
 
-            return Create(Core);
+            return Core(source, selector);
 
-            async IAsyncEnumerator<TResult> Core(CancellationToken cancellationToken)
+            static async IAsyncEnumerable<TResult> Core(IAsyncEnumerable<TSource> source, Func<TSource, int, TResult> selector, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
             {
                 var index = -1;
 
@@ -54,54 +68,69 @@ namespace System.Linq
             }
         }
 
-        internal static IAsyncEnumerable<TResult> SelectAwaitCore<TSource, TResult>(this IAsyncEnumerable<TSource> source, Func<TSource, ValueTask<TResult>> selector)
+        /// <summary>
+        /// Projects each element of an async-enumerable sequence into a new form by applying an asynchronous selector function to each member of the source sequence and awaiting the result.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
+        /// <typeparam name="TResult">The type of the elements in the result sequence, obtained by running the selector function for each element in the source sequence and awaiting the result.</typeparam>
+        /// <param name="source">A sequence of elements to invoke a transform function on.</param>
+        /// <param name="selector">An asynchronous transform function to apply to each source element.</param>
+        /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of the source sequence and awaiting the result.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="selector"/> is null.</exception>
+        [GenerateAsyncOverload]
+        private static IAsyncEnumerable<TResult> SelectAwaitCore<TSource, TResult>(this IAsyncEnumerable<TSource> source, Func<TSource, ValueTask<TResult>> selector)
         {
             if (source == null)
                 throw Error.ArgumentNull(nameof(source));
             if (selector == null)
                 throw Error.ArgumentNull(nameof(selector));
 
-            switch (source)
+            return source switch
             {
-                case AsyncIterator<TSource> iterator:
-                    return iterator.Select(selector);
-                case IList<TSource> list:
-                    return new SelectIListIteratorWithTask<TSource, TResult>(list, selector);
-            }
-
-            return new SelectEnumerableAsyncIteratorWithTask<TSource, TResult>(source, selector);
+                AsyncIterator<TSource> iterator => iterator.Select(selector),
+                IList<TSource> list => new SelectIListIteratorWithTask<TSource, TResult>(list, selector),
+                _ => new SelectEnumerableAsyncIteratorWithTask<TSource, TResult>(source, selector),
+            };
         }
 
 #if !NO_DEEP_CANCELLATION
-        internal static IAsyncEnumerable<TResult> SelectAwaitWithCancellationCore<TSource, TResult>(this IAsyncEnumerable<TSource> source, Func<TSource, CancellationToken, ValueTask<TResult>> selector)
+        [GenerateAsyncOverload]
+        private static IAsyncEnumerable<TResult> SelectAwaitWithCancellationCore<TSource, TResult>(this IAsyncEnumerable<TSource> source, Func<TSource, CancellationToken, ValueTask<TResult>> selector)
         {
             if (source == null)
                 throw Error.ArgumentNull(nameof(source));
             if (selector == null)
                 throw Error.ArgumentNull(nameof(selector));
 
-            switch (source)
+            return source switch
             {
-                case AsyncIterator<TSource> iterator:
-                    return iterator.Select(selector);
-                case IList<TSource> list:
-                    return new SelectIListIteratorWithTaskAndCancellation<TSource, TResult>(list, selector);
-            }
-
-            return new SelectEnumerableAsyncIteratorWithTaskAndCancellation<TSource, TResult>(source, selector);
+                AsyncIterator<TSource> iterator => iterator.Select(selector),
+                IList<TSource> list => new SelectIListIteratorWithTaskAndCancellation<TSource, TResult>(list, selector),
+                _ => new SelectEnumerableAsyncIteratorWithTaskAndCancellation<TSource, TResult>(source, selector),
+            };
         }
 #endif
 
-        internal static IAsyncEnumerable<TResult> SelectAwaitCore<TSource, TResult>(this IAsyncEnumerable<TSource> source, Func<TSource, int, ValueTask<TResult>> selector)
+        /// <summary>
+        /// Projects each element of an async-enumerable sequence into a new form by applying an asynchronous selector function that incorporates each element's index to each element of the source sequence and awaiting the result.
+        /// </summary>
+        /// <typeparam name="TSource">The type of elements in the source sequence.</typeparam>
+        /// <typeparam name="TResult">The type of elements in the result sequence, obtained by running the selector function for each element and its index, and awaiting the result.</typeparam>
+        /// <param name="source">A sequence of elements to invoke a transform function on.</param>
+        /// <param name="selector">An asynchronous transform function to apply to each source element; the second parameter represents the index of the element.</param>
+        /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element and its index of the source sequence and awaiting the result.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="selector"/> is null.</exception>
+        [GenerateAsyncOverload]
+        private static IAsyncEnumerable<TResult> SelectAwaitCore<TSource, TResult>(this IAsyncEnumerable<TSource> source, Func<TSource, int, ValueTask<TResult>> selector)
         {
             if (source == null)
                 throw Error.ArgumentNull(nameof(source));
             if (selector == null)
                 throw Error.ArgumentNull(nameof(selector));
 
-            return Create(Core);
+            return Core(source, selector);
 
-            async IAsyncEnumerator<TResult> Core(CancellationToken cancellationToken)
+            static async IAsyncEnumerable<TResult> Core(IAsyncEnumerable<TSource> source, Func<TSource, int, ValueTask<TResult>> selector, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
             {
                 var index = -1;
 
@@ -118,16 +147,17 @@ namespace System.Linq
         }
 
 #if !NO_DEEP_CANCELLATION
-        internal static IAsyncEnumerable<TResult> SelectAwaitWithCancellationCore<TSource, TResult>(this IAsyncEnumerable<TSource> source, Func<TSource, int, CancellationToken, ValueTask<TResult>> selector)
+        [GenerateAsyncOverload]
+        private static IAsyncEnumerable<TResult> SelectAwaitWithCancellationCore<TSource, TResult>(this IAsyncEnumerable<TSource> source, Func<TSource, int, CancellationToken, ValueTask<TResult>> selector)
         {
             if (source == null)
                 throw Error.ArgumentNull(nameof(source));
             if (selector == null)
                 throw Error.ArgumentNull(nameof(selector));
 
-            return Create(Core);
+            return Core(source, selector);
 
-            async IAsyncEnumerator<TResult> Core(CancellationToken cancellationToken)
+            static async IAsyncEnumerable<TResult> Core(IAsyncEnumerable<TSource> source, Func<TSource, int, CancellationToken, ValueTask<TResult>> selector, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
             {
                 var index = -1;
 
@@ -153,9 +183,6 @@ namespace System.Linq
 
             public SelectEnumerableAsyncIterator(IAsyncEnumerable<TSource> source, Func<TSource, TResult> selector)
             {
-                Debug.Assert(source != null);
-                Debug.Assert(selector != null);
-
                 _source = source;
                 _selector = selector;
             }
@@ -213,9 +240,6 @@ namespace System.Linq
 
             public SelectIListIterator(IList<TSource> source, Func<TSource, TResult> selector)
             {
-                Debug.Assert(source != null);
-                Debug.Assert(selector != null);
-
                 _source = source;
                 _selector = selector;
             }
@@ -330,9 +354,6 @@ namespace System.Linq
 
             public SelectEnumerableAsyncIteratorWithTask(IAsyncEnumerable<TSource> source, Func<TSource, ValueTask<TResult>> selector)
             {
-                Debug.Assert(source != null);
-                Debug.Assert(selector != null);
-
                 _source = source;
                 _selector = selector;
             }
@@ -392,9 +413,6 @@ namespace System.Linq
 
             public SelectEnumerableAsyncIteratorWithTaskAndCancellation(IAsyncEnumerable<TSource> source, Func<TSource, CancellationToken, ValueTask<TResult>> selector)
             {
-                Debug.Assert(source != null);
-                Debug.Assert(selector != null);
-
                 _source = source;
                 _selector = selector;
             }
@@ -458,9 +476,6 @@ namespace System.Linq
 
             public SelectIListIteratorWithTask(IList<TSource> source, Func<TSource, ValueTask<TResult>> selector)
             {
-                Debug.Assert(source != null);
-                Debug.Assert(selector != null);
-
                 _source = source;
                 _selector = selector;
             }
@@ -580,9 +595,6 @@ namespace System.Linq
 
             public SelectIListIteratorWithTaskAndCancellation(IList<TSource> source, Func<TSource, CancellationToken, ValueTask<TResult>> selector)
             {
-                Debug.Assert(source != null);
-                Debug.Assert(selector != null);
-
                 _source = source;
                 _selector = selector;
             }

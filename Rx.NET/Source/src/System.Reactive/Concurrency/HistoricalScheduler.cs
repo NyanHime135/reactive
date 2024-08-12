@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -74,7 +74,7 @@ namespace System.Reactive.Concurrency
     "\\}")]
     public class HistoricalScheduler : HistoricalSchedulerBase
     {
-        private readonly SchedulerQueue<DateTimeOffset> _queue = new SchedulerQueue<DateTimeOffset>();
+        private readonly SchedulerQueue<DateTimeOffset> _queue = new();
 
         /// <summary>
         /// Creates a new historical scheduler with the minimum value of <see cref="DateTimeOffset"/> as the initial clock value.
@@ -107,7 +107,7 @@ namespace System.Reactive.Concurrency
         /// Gets the next scheduled item to be executed.
         /// </summary>
         /// <returns>The next scheduled item.</returns>
-        protected override IScheduledItem<DateTimeOffset> GetNext()
+        protected override IScheduledItem<DateTimeOffset>? GetNext()
         {
             while (_queue.Count > 0)
             {
@@ -142,11 +142,11 @@ namespace System.Reactive.Concurrency
                 throw new ArgumentNullException(nameof(action));
             }
 
-            var si = default(ScheduledItem<DateTimeOffset, TState>);
+            ScheduledItem<DateTimeOffset, TState>? si = null;
 
             var run = new Func<IScheduler, TState, IDisposable>((scheduler, state1) =>
             {
-                _queue.Remove(si);
+                _queue.Remove(si!); // NB: Assigned before function is invoked.
                 return action(scheduler, state1);
             });
 

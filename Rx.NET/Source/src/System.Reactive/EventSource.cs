@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -9,14 +9,13 @@ namespace System.Reactive
     internal sealed class EventSource<T> : IEventSource<T>
     {
         private readonly IObservable<T> _source;
-        private readonly Dictionary<Delegate, Stack<IDisposable>> _subscriptions;
+        private readonly Dictionary<Delegate, Stack<IDisposable>> _subscriptions = [];
         private readonly Action<Action<T>, /*object,*/ T> _invokeHandler;
 
         public EventSource(IObservable<T> source, Action<Action<T>, /*object,*/ T> invokeHandler)
         {
             _source = source;
             _invokeHandler = invokeHandler;
-            _subscriptions = new Dictionary<Delegate, Stack<IDisposable>>();
         }
 
         public event Action<T> OnNext
@@ -71,8 +70,7 @@ namespace System.Reactive
         {
             lock (_subscriptions)
             {
-                var l = new Stack<IDisposable>();
-                if (!_subscriptions.TryGetValue(handler, out l))
+                if (!_subscriptions.TryGetValue(handler, out var l))
                 {
                     _subscriptions[handler] = l = new Stack<IDisposable>();
                 }
@@ -83,11 +81,12 @@ namespace System.Reactive
 
         private void Remove(Delegate handler)
         {
-            var d = default(IDisposable);
+            IDisposable? d = null;
 
             lock (_subscriptions)
             {
                 var l = new Stack<IDisposable>();
+
                 if (_subscriptions.TryGetValue(handler, out l))
                 {
                     d = l.Pop();

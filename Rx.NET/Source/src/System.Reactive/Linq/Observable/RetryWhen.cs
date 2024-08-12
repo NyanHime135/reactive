@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Concurrent;
@@ -28,14 +28,18 @@ namespace System.Reactive.Linq.ObservableImpl
             }
 
             var errorSignals = new Subject<Exception>();
-            var redo = default(IObservable<U>);
+            
+            IObservable<U> redo;
 
             try
             {
                 redo = _handler(errorSignals);
+
                 if (redo == null)
                 {
+#pragma warning disable CA2201 // (Do not raise reserved exception types.) Backwards compatibility prevents us from complying.
                     throw new NullReferenceException("The handler returned a null IObservable");
+#pragma warning restore CA2201
                 }
             }
             catch (Exception ex)
@@ -47,7 +51,7 @@ namespace System.Reactive.Linq.ObservableImpl
             var parent = new MainObserver(observer, _source, new RedoSerializedObserver<Exception>(errorSignals));
 
             var d = redo.SubscribeSafe(parent.HandlerConsumer);
-            Disposable.SetSingle(ref parent.HandlerUpstream, d);
+            parent.HandlerUpstream.Disposable = d;
 
             parent.HandlerNext();
 
@@ -56,15 +60,15 @@ namespace System.Reactive.Linq.ObservableImpl
 
         private sealed class MainObserver : Sink<T>, IObserver<T>
         {
+            private readonly IObservable<T> _source;
             private readonly IObserver<Exception> _errorSignal;
 
             internal readonly HandlerObserver HandlerConsumer;
-            private readonly IObservable<T> _source;
-            private IDisposable _upstream;
-            internal IDisposable HandlerUpstream;
+            private IDisposable? _upstream;
+            internal SingleAssignmentDisposableValue HandlerUpstream;
             private int _trampoline;
             private int _halfSerializer;
-            private Exception _error;
+            private Exception? _error;
 
             internal MainObserver(IObserver<T> downstream, IObservable<T> source, IObserver<Exception> errorSignal) : base(downstream)
             {
@@ -77,9 +81,10 @@ namespace System.Reactive.Linq.ObservableImpl
             {
                 if (disposing)
                 {
-                    Disposable.TryDispose(ref _upstream);
-                    Disposable.TryDispose(ref HandlerUpstream);
+                    Disposable.Dispose(ref _upstream);
+                    HandlerUpstream.Dispose();
                 }
+
                 base.Dispose(disposing);
             }
 
@@ -158,11 +163,15 @@ namespace System.Reactive.Linq.ObservableImpl
 
     internal sealed class RedoSerializedObserver<X> : IObserver<X>
     {
+#pragma warning disable CA2201 // (Do not raise reserved exception types.) This is a sentinel, and is not thrown, so there's no need for it to be anything else.
+        private static readonly Exception SignaledIndicator = new();
+#pragma warning restore CA2201
+
         private readonly IObserver<X> _downstream;
-        private int _wip;
-        private Exception _terminalException;
-        private static readonly Exception SignaledIndicator = new Exception();
         private readonly ConcurrentQueue<X> _queue;
+
+        private int _wip;
+        private Exception? _terminalException;
 
         internal RedoSerializedObserver(IObserver<X> downstream)
         {

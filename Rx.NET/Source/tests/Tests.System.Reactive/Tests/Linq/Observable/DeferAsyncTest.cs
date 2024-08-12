@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -8,21 +8,24 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Reactive.Testing;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+using Assert = Xunit.Assert;
 
 namespace ReactiveTests.Tests
 {
+    [TestClass]
     public class DeferAsyncTest : ReactiveTest
     {
 
-        [Fact]
+        [TestMethod]
         public void DeferAsync_ArgumentChecking()
         {
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Defer(default(Func<Task<IObservable<int>>>)));
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.DeferAsync(default(Func<CancellationToken, Task<IObservable<int>>>)));
         }
 
-        [Fact]
+        [TestMethod]
         public void DeferAsync_Simple()
         {
             var xs = Observable.Defer(() => Task.Factory.StartNew(() => Observable.Return(42)));
@@ -32,7 +35,7 @@ namespace ReactiveTests.Tests
             Assert.True(new[] { 42 }.SequenceEqual(res));
         }
 
-        [Fact]
+        [TestMethod]
         public void DeferAsync_WithCancel_Simple()
         {
             var xs = Observable.DeferAsync(ct => Task.Factory.StartNew(() => Observable.Return(42)));
@@ -42,7 +45,7 @@ namespace ReactiveTests.Tests
             Assert.True(new[] { 42 }.SequenceEqual(res));
         }
 
-        [Fact]
+        [TestMethod]
         public void DeferAsync_WithCancel_Cancel()
         {
             var N = 10;// 0000;

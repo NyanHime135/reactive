@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -42,7 +42,7 @@ namespace System.Reactive.Linq
         /// <param name="source">The sequence to return a default value for if it is empty.</param>
         /// <returns>An observable sequence that contains the default value for the TSource type if the source is empty; otherwise, the elements of the source itself.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
-        public static IObservable<TSource> DefaultIfEmpty<TSource>(this IObservable<TSource> source)
+        public static IObservable<TSource?> DefaultIfEmpty<TSource>(this IObservable<TSource> source)
         {
             if (source == null)
             {

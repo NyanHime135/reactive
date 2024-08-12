@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -19,13 +19,13 @@ namespace System.Reactive.Linq.ObservableImpl
             _scheduler = scheduler;
         }
 
-        protected override _ CreateSink(IObserver<TSource> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<TSource> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_source, _scheduler);
 
         internal sealed class _ : IdentitySink<TSource>
         {
-            private IEnumerator<TSource> _enumerator;
+            private IEnumerator<TSource>? _enumerator;
 
             private volatile bool _disposed;
 
@@ -52,12 +52,13 @@ namespace System.Reactive.Linq.ObservableImpl
                 // is used to have LoopRec bail out and perform proper clean-up of the
                 // enumerator.
                 //
-                scheduler.Schedule(this, (innerScheduler, @this) => @this.LoopRec(innerScheduler));
+                scheduler.Schedule(this, static (innerScheduler, @this) => @this.LoopRec(innerScheduler));
             }
 
             protected override void Dispose(bool disposing)
             {
                 base.Dispose(disposing);
+
                 if (disposing)
                 {
                     _disposed = true;
@@ -70,11 +71,11 @@ namespace System.Reactive.Linq.ObservableImpl
                 var ex = default(Exception);
                 var current = default(TSource);
 
-                var enumerator = _enumerator;
+                var enumerator = _enumerator!; // NB: Loop only runs after enumerator is assigned.
 
                 if (_disposed)
                 {
-                    _enumerator.Dispose();
+                    enumerator.Dispose();
                     _enumerator = null;
 
                     return Disposable.Empty;
@@ -111,14 +112,14 @@ namespace System.Reactive.Linq.ObservableImpl
                     return Disposable.Empty;
                 }
 
-                ForwardOnNext(current);
+                ForwardOnNext(current!); // NB: Non-null when hasNext is true.
 
                 //
                 // We never allow the scheduled work to be cancelled. Instead, the _disposed flag
                 // is used to have LoopRec bail out and perform proper clean-up of the
                 // enumerator.
                 //
-                scheduler.Schedule(this, (innerScheduler, @this) => @this.LoopRec(innerScheduler));
+                scheduler.Schedule(this, static (innerScheduler, @this) => @this.LoopRec(innerScheduler));
 
                 return Disposable.Empty;
             }
@@ -136,7 +137,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _scheduler = scheduler;
         }
 
-        protected override _ CreateSink(IObserver<TSource> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<TSource> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_source, _scheduler);
 
@@ -149,7 +150,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
             public void Run(IEnumerable<TSource> source, ISchedulerLongRunning scheduler)
             {
-                var e = default(IEnumerator<TSource>);
+                IEnumerator<TSource> e;
                 try
                 {
                     e = source.GetEnumerator();
@@ -161,7 +162,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     return;
                 }
 
-                SetUpstream(scheduler.ScheduleLongRunning((@this: this, e), (tuple, cancelable) => tuple.@this.Loop(tuple.e, cancelable)));
+                SetUpstream(scheduler.ScheduleLongRunning((@this: this, e), static (tuple, cancelable) => tuple.@this.Loop(tuple.e, cancelable)));
             }
 
             private void Loop(IEnumerator<TSource> enumerator, ICancelable cancel)
@@ -197,7 +198,7 @@ namespace System.Reactive.Linq.ObservableImpl
                         break;
                     }
 
-                    ForwardOnNext(current);
+                    ForwardOnNext(current!); // NB: Non-null when hasNext is true.
                 }
 
                 enumerator.Dispose();

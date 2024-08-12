@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -23,7 +23,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _comparer = comparer;
             }
 
-            protected override _ CreateSink(IObserver<bool> observer) => new _(_comparer, observer);
+            protected override _ CreateSink(IObserver<bool> observer) => new(_comparer, observer);
 
             protected override void Run(_ sink) => sink.Run(this);
 
@@ -46,20 +46,21 @@ namespace System.Reactive.Linq.ObservableImpl
                 private bool _donel;
                 private bool _doner;
 
-                private IDisposable _second;
+                private SingleAssignmentDisposableValue _second;
 
                 public void Run(Observable parent)
                 {
                     SetUpstream(parent._first.SubscribeSafe(new FirstObserver(this)));
-                    Disposable.SetSingle(ref _second, parent._second.SubscribeSafe(new SecondObserver(this)));
+                    _second.Disposable = parent._second.SubscribeSafe(new SecondObserver(this));
                 }
 
                 protected override void Dispose(bool disposing)
                 {
                     if (disposing)
                     {
-                        Disposable.TryDispose(ref _second);
+                        _second.Dispose();
                     }
+
                     base.Dispose(disposing);
                 }
 
@@ -226,7 +227,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 _comparer = comparer;
             }
 
-            protected override _ CreateSink(IObserver<bool> observer) => new _(_comparer, observer);
+            protected override _ CreateSink(IObserver<bool> observer) => new(_comparer, observer);
 
             protected override void Run(_ sink) => sink.Run(this);
 
@@ -240,7 +241,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     _comparer = comparer;
                 }
 
-                private IEnumerator<TSource> _enumerator;
+                private IEnumerator<TSource>? _enumerator;
 
                 private static readonly IEnumerator<TSource> DisposedEnumerator = MakeDisposedEnumerator();
 
@@ -284,6 +285,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     {
                         Interlocked.Exchange(ref _enumerator, DisposedEnumerator)?.Dispose();
                     }
+
                     base.Dispose(disposing);
                 }
 
@@ -293,7 +295,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                     try
                     {
-                        if (_enumerator.MoveNext())
+                        if (_enumerator!.MoveNext()) // NB: Non-null after Run is called.
                         {
                             var current = _enumerator.Current;
                             equal = _comparer.Equals(value, current);
@@ -314,11 +316,10 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public override void OnCompleted()
                 {
-                    var hasNext = false;
-
+                    bool hasNext;
                     try
                     {
-                        hasNext = _enumerator.MoveNext();
+                        hasNext = _enumerator!.MoveNext(); // NB: Non-null after Run is called.
                     }
                     catch (Exception exception)
                     {

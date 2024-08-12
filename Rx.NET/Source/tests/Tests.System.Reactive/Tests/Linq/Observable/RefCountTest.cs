@@ -1,18 +1,22 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
+using System.Collections.Generic;
 using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using Microsoft.Reactive.Testing;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+using Assert = Xunit.Assert;
 
 namespace ReactiveTests.Tests
 {
+    [TestClass]
     public class RefCountTest : ReactiveTest
     {
         private sealed class DematerializingConnectableObservable<T> : IConnectableObservable<T>
@@ -35,13 +39,17 @@ namespace ReactiveTests.Tests
             }
         }
 
-        [Fact]
+        [TestMethod]
         public void RefCount_ArgumentChecking()
         {
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.RefCount<int>(null));
+            ReactiveAssert.Throws<ArgumentNullException>(() => Observable.RefCount<int>(null, 2));
+            ReactiveAssert.Throws<ArgumentOutOfRangeException>(() => Observable.RefCount(Observable.Never<int>().Publish(), 0));
+            ReactiveAssert.Throws<ArgumentOutOfRangeException>(() => Observable.RefCount(Observable.Never<int>().Publish(), -1));
+            ReactiveAssert.Throws<ArgumentOutOfRangeException>(() => Observable.RefCount(Observable.Never<int>().Publish(), -2));
         }
 
-        [Fact]
+        [TestMethod]
         public void RefCount_ConnectsOnFirst()
         {
             var scheduler = new TestScheduler();
@@ -73,7 +81,7 @@ namespace ReactiveTests.Tests
             Assert.True(subject.Disposed);
         }
 
-        [Fact]
+        [TestMethod]
         public void RefCount_NotConnected()
         {
             var disconnected = false;
@@ -117,7 +125,7 @@ namespace ReactiveTests.Tests
             Assert.True(disconnected);
         }
 
-        [Fact]
+        [TestMethod]
         public void RefCount_OnError()
         {
             var ex = new Exception();
@@ -129,7 +137,7 @@ namespace ReactiveTests.Tests
             res.Subscribe(_ => { Assert.True(false); }, ex_ => { Assert.Same(ex, ex_); }, () => { Assert.True(false); });
         }
 
-        [Fact]
+        [TestMethod]
         public void RefCount_Publish()
         {
             var scheduler = new TestScheduler();
@@ -199,7 +207,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void RefCount_can_connect_again_if_previous_subscription_terminated_synchronously()
         {
             var seen = 0;
@@ -237,13 +245,22 @@ namespace ReactiveTests.Tests
             }
         }
         
-        [Fact]
+        [TestMethod]
         public void LazyRefCount_ArgumentChecking()
         {
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.RefCount<int>(null, TimeSpan.FromSeconds(2)));
+            ReactiveAssert.Throws<ArgumentNullException>(() => Observable.RefCount<int>(null, TimeSpan.FromSeconds(2), Scheduler.Default));
+            ReactiveAssert.Throws<ArgumentNullException>(() => Observable.RefCount<int>(null, 2, TimeSpan.FromSeconds(2)));
+            ReactiveAssert.Throws<ArgumentNullException>(() => Observable.RefCount<int>(null, 2, TimeSpan.FromSeconds(2)));
+            ReactiveAssert.Throws<ArgumentNullException>(() => Observable.RefCount(Observable.Never<int>().Publish(), TimeSpan.FromSeconds(2), null));
+            ReactiveAssert.Throws<ArgumentOutOfRangeException>(() => Observable.RefCount(Observable.Never<int>().Publish(), 0, TimeSpan.FromSeconds(2)));
+            ReactiveAssert.Throws<ArgumentOutOfRangeException>(() => Observable.RefCount(Observable.Never<int>().Publish(), -1, TimeSpan.FromSeconds(2)));
+            ReactiveAssert.Throws<ArgumentNullException>(() => Observable.RefCount(Observable.Never<int>().Publish(), 2, TimeSpan.FromSeconds(2), null));
+            ReactiveAssert.Throws<ArgumentOutOfRangeException>(() => Observable.RefCount(Observable.Never<int>().Publish(), 0, TimeSpan.FromSeconds(2), Scheduler.Default));
+            ReactiveAssert.Throws<ArgumentOutOfRangeException>(() => Observable.RefCount(Observable.Never<int>().Publish(), -1, TimeSpan.FromSeconds(2), Scheduler.Default));
         }
 
-        [Fact]
+        [TestMethod]
         public void LazyRefCount_ConnectsOnFirst()
         {
             var scheduler = new TestScheduler();
@@ -275,7 +292,7 @@ namespace ReactiveTests.Tests
             Assert.True(subject.Disposed);
         }
 
-        [Fact]
+        [TestMethod]
         public void LazyRefCount_NotConnected()
         {
             var scheduler = new TestScheduler();
@@ -327,7 +344,7 @@ namespace ReactiveTests.Tests
             Assert.True(disconnected);
         }
 
-        [Fact]
+        [TestMethod]
         public void LazyRefCount_OnError()
         {
             var ex = new Exception();
@@ -339,7 +356,7 @@ namespace ReactiveTests.Tests
             res.Subscribe(_ => throw new Exception(), ex_ => { Assert.Same(ex, ex_); }, () => throw new Exception());
         }
 
-        [Fact]
+        [TestMethod]
         public void LazyRefCount_Publish()
         {
             var scheduler = new TestScheduler();
@@ -412,7 +429,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void RefCount_source_already_completed_synchronously()
         {
             var subscribed = 0;
@@ -435,6 +452,106 @@ namespace ReactiveTests.Tests
             var s2 = o2.Subscribe();
             Assert.Equal(1, subscribed);
             Assert.Equal(1, unsubscribed);
+        }
+
+        [TestMethod]
+        public void RefCount_minObservers_not_connected_Eager()
+        {
+            var connected = 0;
+            var source = Observable.Defer(() =>
+            {
+                connected++;
+                return Observable.Never<int>();
+            })
+            .Publish()
+            .RefCount(2);
+
+            Assert.Equal(0, connected);
+
+            source.Subscribe();
+
+            Assert.Equal(0, connected);
+        }
+
+        [TestMethod]
+        public void RefCount_minObservers_connected_Eager()
+        {
+            var connected = 0;
+            var source = Observable.Defer(() =>
+            {
+                connected++;
+                return Observable.Range(1, 5);
+            })
+            .Publish()
+            .RefCount(2);
+
+            Assert.Equal(0, connected);
+
+            var list1 = new List<int>();
+            source.Subscribe(list1.Add);
+
+            Assert.Equal(0, connected);
+            Assert.Empty(list1);
+
+            var list2 = new List<int>();
+            source.Subscribe(list2.Add);
+
+            Assert.Equal(1, connected);
+
+            List<int> expected = [1, 2, 3, 4, 5];
+
+            Assert.Equal(expected, list1);
+            Assert.Equal(expected, list2);
+        }
+
+        [TestMethod]
+        public void RefCount_minObservers_not_connected_Lazy()
+        {
+            var connected = 0;
+            var source = Observable.Defer(() =>
+            {
+                connected++;
+                return Observable.Never<int>();
+            })
+            .Publish()
+            .RefCount(2, TimeSpan.FromMinutes(1));
+
+            Assert.Equal(0, connected);
+
+            source.Subscribe();
+
+            Assert.Equal(0, connected);
+        }
+
+        [TestMethod]
+        public void RefCount_minObservers_connected_Lazy()
+        {
+            var connected = 0;
+            var source = Observable.Defer(() =>
+            {
+                connected++;
+                return Observable.Range(1, 5);
+            })
+            .Publish()
+            .RefCount(2, TimeSpan.FromMinutes(1));
+
+            Assert.Equal(0, connected);
+
+            var list1 = new List<int>();
+            source.Subscribe(list1.Add);
+
+            Assert.Equal(0, connected);
+            Assert.Empty(list1);
+
+            var list2 = new List<int>();
+            source.Subscribe(list2.Add);
+
+            Assert.Equal(1, connected);
+
+            var expected = new List<int>([1, 2, 3, 4, 5]);
+
+            Assert.Equal(expected, list1);
+            Assert.Equal(expected, list2);
         }
     }
 }

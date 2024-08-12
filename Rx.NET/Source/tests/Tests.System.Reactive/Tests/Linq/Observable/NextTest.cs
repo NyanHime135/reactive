@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System;
@@ -12,20 +12,23 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Reactive.Testing;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+using Assert = Xunit.Assert;
 
 namespace ReactiveTests.Tests
 {
+    [TestClass]
     public class NextTest : ReactiveTest
     {
 
-        [Fact]
+        [TestMethod]
         public void Next_ArgumentChecking()
         {
             ReactiveAssert.Throws<ArgumentNullException>(() => Observable.Next(default(IObservable<int>)));
         }
 
-        [Fact]
+        [TestMethod]
         public void Next1()
         {
             var evt = new AutoResetEvent(false);
@@ -65,7 +68,7 @@ namespace ReactiveTests.Tests
         }
 
 
-        [Fact]
+        [TestMethod]
         public void Next2()
         {
             var scheduler = new TestScheduler();
@@ -107,7 +110,7 @@ namespace ReactiveTests.Tests
             );
         }
 
-        [Fact]
+        [TestMethod]
         public void Next_DoesNotBlock()
         {
             var evt = new ManualResetEvent(false);
@@ -121,7 +124,7 @@ namespace ReactiveTests.Tests
             Assert.False(e.MoveNext());
         }
 
-        [Fact]
+        [TestMethod]
         public void Next_SomeResults()
         {
             var xs = Observable.Range(0, 100, Scheduler.Default);
@@ -132,8 +135,7 @@ namespace ReactiveTests.Tests
             Assert.True(res.Count == res.Distinct().Count());
         }
 
-#if !NO_THREAD
-        [Fact]
+        [TestMethod]
         public void Next_Error()
         {
             var ex = new Exception();
@@ -168,7 +170,5 @@ namespace ReactiveTests.Tests
 
             ReactiveAssert.Throws(ex, () => res.MoveNext());
         }
-#endif
-
     }
 }

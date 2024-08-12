@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive;
@@ -14,7 +14,9 @@ namespace System.Runtime.CompilerServices
     /// Represents a builder for asynchronous methods that return a task-like <see cref="ITaskObservable{T}"/>.
     /// </summary>
     /// <typeparam name="T">The type of the elements in the sequence.</typeparam>
+#pragma warning disable CA1815 // (Override equals on value types.) Method only meant to be used by await/async generated code, so equality is not required.
     public struct TaskObservableMethodBuilder<T>
+#pragma warning restore CA1815
     {
         /// <summary>
         /// The compiler-generated asynchronous state machine representing the execution flow of the asynchronous
@@ -31,7 +33,9 @@ namespace System.Runtime.CompilerServices
         /// Creates an instance of the <see cref="TaskObservableMethodBuilder{T}"/> struct.
         /// </summary>
         /// <returns>A new instance of the struct.</returns>
+#pragma warning disable CA1000 // (Do not declare static members on generic types.) Async method builders are required to define a static Create method, and are require to be generic when the async type produces a result.
         public static TaskObservableMethodBuilder<T> Create() => default;
+#pragma warning restore CA1000 // Do not declare static members on generic types
 
         /// <summary>
         /// Begins running the builder with the associated state machine.
@@ -39,7 +43,10 @@ namespace System.Runtime.CompilerServices
         /// <typeparam name="TStateMachine">The type of the state machine.</typeparam>
         /// <param name="stateMachine">The state machine instance, passed by reference.</param>
         /// <exception cref="ArgumentNullException"><paramref name="stateMachine"/> is <c>null</c>.</exception>
+#pragma warning disable CA1045 // (Avoid ref.) Required because this is an async method builder
+#pragma warning disable IDE0251 // (Make readonly.) Not part of the standard method builder pattern.
         public void Start<TStateMachine>(ref TStateMachine stateMachine)
+#pragma warning restore CA1045, IDE0251
             where TStateMachine : IAsyncStateMachine
         {
             if (stateMachine == null)
@@ -109,7 +116,7 @@ namespace System.Runtime.CompilerServices
         /// <summary>
         /// Gets the observable sequence for this builder.
         /// </summary>
-        public ITaskObservable<T> Task => _inner ?? (_inner = new TaskObservable());
+        public ITaskObservable<T> Task => _inner ??= new TaskObservable();
 
         /// <summary>
         /// Schedules the state machine to proceed to the next action when the specified awaiter completes.
@@ -118,7 +125,9 @@ namespace System.Runtime.CompilerServices
         /// <typeparam name="TStateMachine">The type of the state machine.</typeparam>
         /// <param name="awaiter">The awaiter.</param>
         /// <param name="stateMachine">The state machine.</param>
+#pragma warning disable CA1045 // (Avoid ref.) Required because this is an async method builder
         public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+#pragma warning restore CA1045
             where TAwaiter : INotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
@@ -154,7 +163,9 @@ namespace System.Runtime.CompilerServices
         /// <param name="awaiter">The awaiter.</param>
         /// <param name="stateMachine">The state machine.</param>
         [SecuritySafeCritical]
+#pragma warning disable CA1045 // (Avoid ref.) Required because this is an async method builder
         public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+#pragma warning restore CA1045
             where TAwaiter : ICriticalNotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
@@ -211,17 +222,17 @@ namespace System.Runtime.CompilerServices
             /// The underlying observable sequence to subscribe to in case the asynchronous method did not
             /// finish synchronously.
             /// </summary>
-            private readonly AsyncSubject<T> _subject;
+            private readonly AsyncSubject<T>? _subject;
 
             /// <summary>
             /// The result returned by the asynchronous method in case the method finished synchronously.
             /// </summary>
-            private readonly T _result;
+            private readonly T? _result;
 
             /// <summary>
             /// The exception thrown by the asynchronous method in case the method finished synchronously.
             /// </summary>
-            private readonly Exception _exception;
+            private readonly Exception? _exception;
 
             /// <summary>
             /// Creates a new <see cref="TaskObservable"/> for an asynchronous method that has not finished yet.
@@ -263,7 +274,7 @@ namespace System.Runtime.CompilerServices
                     throw new InvalidOperationException();
                 }
 
-                _subject.OnNext(result);
+                _subject!.OnNext(result);
                 _subject.OnCompleted();
             }
 
@@ -280,7 +291,7 @@ namespace System.Runtime.CompilerServices
                     throw new InvalidOperationException();
                 }
 
-                _subject.OnError(exception);
+                _subject!.OnError(exception);
             }
 
             /// <summary>
@@ -302,7 +313,7 @@ namespace System.Runtime.CompilerServices
                     return Disposable.Empty;
                 }
 
-                observer.OnNext(_result);
+                observer.OnNext(_result!);
                 return Disposable.Empty;
             }
 
@@ -328,9 +339,9 @@ namespace System.Runtime.CompilerServices
                     return _subject.GetResult();
                 }
 
-                _exception.ThrowIfNotNull();
+                _exception?.Throw();
 
-                return _result;
+                return _result!;
             }
 
             /// <summary>

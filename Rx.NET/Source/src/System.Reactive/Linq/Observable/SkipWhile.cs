@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 namespace System.Reactive.Linq.ObservableImpl
@@ -17,13 +17,13 @@ namespace System.Reactive.Linq.ObservableImpl
                 _predicate = predicate;
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(_predicate, observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(_predicate, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
             internal sealed class _ : IdentitySink<TSource>
             {
-                private Func<TSource, bool> _predicate;
+                private Func<TSource, bool>? _predicate;
 
                 public _(Func<TSource, bool> predicate, IObserver<TSource> observer)
                     : base(observer)
@@ -35,7 +35,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (_predicate != null)
                     {
-                        var shouldStart = default(bool);
+                        bool shouldStart;
                         try
                         {
                             shouldStart = !_predicate(value);
@@ -72,13 +72,13 @@ namespace System.Reactive.Linq.ObservableImpl
                 _predicate = predicate;
             }
 
-            protected override _ CreateSink(IObserver<TSource> observer) => new _(_predicate, observer);
+            protected override _ CreateSink(IObserver<TSource> observer) => new(_predicate, observer);
 
             protected override void Run(_ sink) => sink.Run(_source);
 
             internal sealed class _ : IdentitySink<TSource>
             {
-                private Func<TSource, int, bool> _predicate;
+                private Func<TSource, int, bool>? _predicate;
                 private int _index;
 
                 public _(Func<TSource, int, bool> predicate, IObserver<TSource> observer)
@@ -91,7 +91,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (_predicate != null)
                     {
-                        var shouldStart = default(bool);
+                        bool shouldStart;
                         try
                         {
                             shouldStart = !_predicate(value, checked(_index++));

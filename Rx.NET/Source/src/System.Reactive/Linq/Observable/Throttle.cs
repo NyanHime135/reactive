@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -20,12 +20,13 @@ namespace System.Reactive.Linq.ObservableImpl
             _scheduler = scheduler;
         }
 
-        protected override _ CreateSink(IObserver<TSource> observer) => new _(this, observer);
+        protected override _ CreateSink(IObserver<TSource> observer) => new(this, observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
         internal sealed class _ : IdentitySink<TSource>
         {
+            private readonly object _gate = new();
             private readonly TimeSpan _dueTime;
             private readonly IScheduler _scheduler;
 
@@ -36,17 +37,16 @@ namespace System.Reactive.Linq.ObservableImpl
                 _scheduler = parent._scheduler;
             }
 
-            private readonly object _gate = new object();
-            private TSource _value;
+            private TSource? _value;
             private bool _hasValue;
-            private IDisposable _serialCancelable;
+            private SerialDisposableValue _serialCancelable;
             private ulong _id;
 
             protected override void Dispose(bool disposing)
             {
                 if (disposing)
                 {
-                    Disposable.TryDispose(ref _serialCancelable);
+                    _serialCancelable.Dispose();
                 }
 
                 base.Dispose(disposing);
@@ -54,7 +54,8 @@ namespace System.Reactive.Linq.ObservableImpl
 
             public override void OnNext(TSource value)
             {
-                var currentid = default(ulong);
+                ulong currentid;
+
                 lock (_gate)
                 {
                     _hasValue = true;
@@ -63,8 +64,8 @@ namespace System.Reactive.Linq.ObservableImpl
                     currentid = _id;
                 }
 
-                Disposable.TrySetSerial(ref _serialCancelable, null);
-                Disposable.TrySetSerial(ref _serialCancelable, _scheduler.ScheduleAction((@this: this, currentid), _dueTime, tuple => tuple.@this.Propagate(tuple.currentid)));
+                _serialCancelable.Disposable = null;
+                _serialCancelable.Disposable = _scheduler.ScheduleAction((@this: this, currentid), _dueTime, static tuple => tuple.@this.Propagate(tuple.currentid));
             }
 
             private void Propagate(ulong currentid)
@@ -73,16 +74,16 @@ namespace System.Reactive.Linq.ObservableImpl
                 {
                     if (_hasValue && _id == currentid)
                     {
-                        ForwardOnNext(_value);
-                    }
+                        ForwardOnNext(_value!);
 
-                    _hasValue = false;
+                        _hasValue = false;
+                    }
                 }
             }
 
             public override void OnError(Exception error)
             {
-                Disposable.TryDispose(ref _serialCancelable);
+                _serialCancelable.Dispose();
 
                 lock (_gate)
                 {
@@ -95,13 +96,13 @@ namespace System.Reactive.Linq.ObservableImpl
 
             public override void OnCompleted()
             {
-                Disposable.TryDispose(ref _serialCancelable);
+                _serialCancelable.Dispose();
 
                 lock (_gate)
                 {
                     if (_hasValue)
                     {
-                        ForwardOnNext(_value);
+                        ForwardOnNext(_value!);
                     }
 
                     ForwardOnCompleted();
@@ -124,12 +125,13 @@ namespace System.Reactive.Linq.ObservableImpl
             _throttleSelector = throttleSelector;
         }
 
-        protected override _ CreateSink(IObserver<TSource> observer) => new _(this, observer);
+        protected override _ CreateSink(IObserver<TSource> observer) => new(this, observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
         internal sealed class _ : IdentitySink<TSource>
         {
+            private readonly object _gate = new();
             private readonly Func<TSource, IObservable<TThrottle>> _throttleSelector;
 
             public _(Throttle<TSource, TThrottle> parent, IObserver<TSource> observer)
@@ -138,24 +140,24 @@ namespace System.Reactive.Linq.ObservableImpl
                 _throttleSelector = parent._throttleSelector;
             }
 
-            private readonly object _gate = new object();
-            private TSource _value;
+            private TSource? _value;
             private bool _hasValue;
-            private IDisposable _serialCancelable;
+            private SerialDisposableValue _serialCancelable;
             private ulong _id;
 
             protected override void Dispose(bool disposing)
             {
                 if (disposing)
                 {
-                    Disposable.TryDispose(ref _serialCancelable);
+                    _serialCancelable.Dispose();
                 }
+
                 base.Dispose(disposing);
             }
 
             public override void OnNext(TSource value)
             {
-                var throttle = default(IObservable<TThrottle>);
+                IObservable<TThrottle> throttle;
                 try
                 {
                     throttle = _throttleSelector(value);
@@ -171,6 +173,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 }
 
                 ulong currentid;
+                
                 lock (_gate)
                 {
                     _hasValue = true;
@@ -179,17 +182,17 @@ namespace System.Reactive.Linq.ObservableImpl
                     currentid = _id;
                 }
 
-                Disposable.TrySetSerial(ref _serialCancelable, null);
+                _serialCancelable.Disposable = null;
 
                 var newInnerObserver = new ThrottleObserver(this, value, currentid);
                 newInnerObserver.SetResource(throttle.SubscribeSafe(newInnerObserver));
 
-                Disposable.TrySetSerial(ref _serialCancelable, newInnerObserver);
+                _serialCancelable.Disposable = newInnerObserver;
             }
 
             public override void OnError(Exception error)
             {
-                Disposable.TryDispose(ref _serialCancelable);
+                _serialCancelable.Dispose();
 
                 lock (_gate)
                 {
@@ -202,13 +205,13 @@ namespace System.Reactive.Linq.ObservableImpl
 
             public override void OnCompleted()
             {
-                Disposable.TryDispose(ref _serialCancelable);
+                _serialCancelable.Dispose();
 
                 lock (_gate)
                 {
                     if (_hasValue)
                     {
-                        ForwardOnNext(_value);
+                        ForwardOnNext(_value!);
                     }
 
                     ForwardOnCompleted();

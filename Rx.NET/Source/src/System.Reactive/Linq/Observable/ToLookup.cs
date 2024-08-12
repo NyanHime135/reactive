@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -22,7 +22,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _comparer = comparer;
         }
 
-        protected override _ CreateSink(IObserver<ILookup<TKey, TElement>> observer) => new _(this, observer);
+        protected override _ CreateSink(IObserver<ILookup<TKey, TElement>> observer) => new(this, observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
@@ -48,23 +48,28 @@ namespace System.Reactive.Linq.ObservableImpl
                 }
                 catch (Exception ex)
                 {
-                    _lookup = null;
+                    Cleanup();
                     ForwardOnError(ex);
                 }
             }
 
             public override void OnError(Exception error)
             {
-                _lookup = null;
+                Cleanup();
                 ForwardOnError(error);
             }
 
             public override void OnCompleted()
             {
                 var lookup = _lookup;
-                _lookup = null;
+                Cleanup();
                 ForwardOnNext(lookup);
                 ForwardOnCompleted();
+            }
+
+            private void Cleanup()
+            {
+                _lookup = null!;
             }
         }
     }

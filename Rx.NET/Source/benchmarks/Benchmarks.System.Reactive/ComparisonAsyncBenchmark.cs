@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information.
 
 using System;
@@ -18,8 +18,8 @@ namespace Benchmarks.System.Reactive
         public int N;
         private int _store;
 
-        IScheduler _scheduler1;
-        IScheduler _scheduler2;
+        private IScheduler _scheduler1;
+        private IScheduler _scheduler2;
 
         [GlobalSetup]
         public void Setup()

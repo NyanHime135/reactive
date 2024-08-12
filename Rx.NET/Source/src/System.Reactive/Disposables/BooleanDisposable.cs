@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 namespace System.Reactive.Disposables
@@ -12,7 +12,7 @@ namespace System.Reactive.Disposables
         // Keep internal! This is used as sentinel in other IDisposable implementations to detect disposal and
         // should never be exposed to user code in order to prevent users from swapping in the sentinel. Have
         // a look at the code in e.g. SingleAssignmentDisposable for usage patterns.
-        internal static readonly BooleanDisposable True = new BooleanDisposable(true);
+        internal static readonly BooleanDisposable True = new(true);
 
         private volatile bool _isDisposed;
 

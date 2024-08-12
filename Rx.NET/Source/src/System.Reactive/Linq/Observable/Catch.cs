@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Collections.Generic;
@@ -17,7 +17,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _sources = sources;
         }
 
-        protected override _ CreateSink(IObserver<TSource> observer) => new _(observer);
+        protected override _ CreateSink(IObserver<TSource> observer) => new(observer);
 
         protected override void Run(_ sink) => sink.Run(_sources);
 
@@ -28,7 +28,7 @@ namespace System.Reactive.Linq.ObservableImpl
             {
             }
 
-            protected override IEnumerable<IObservable<TSource>> Extract(IObservable<TSource> source)
+            protected override IEnumerable<IObservable<TSource>>? Extract(IObservable<TSource> source)
             {
                 if (source is Catch<TSource> @catch)
                 {
@@ -38,7 +38,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 return null;
             }
 
-            private Exception _lastException;
+            private Exception? _lastException;
 
             public override void OnError(Exception error)
             {
@@ -82,7 +82,7 @@ namespace System.Reactive.Linq.ObservableImpl
             _handler = handler;
         }
 
-        protected override _ CreateSink(IObserver<TSource> observer) => new _(_handler, observer);
+        protected override _ CreateSink(IObserver<TSource> observer) => new(_handler, observer);
 
         protected override void Run(_ sink) => sink.Run(_source);
 
@@ -97,19 +97,20 @@ namespace System.Reactive.Linq.ObservableImpl
             }
 
             private bool _once;
-            private IDisposable _subscription;
+            private SerialDisposableValue _subscription;
 
             public override void Run(IObservable<TSource> source)
             {
-                Disposable.TrySetSingle(ref _subscription, source.SubscribeSafe(this));
+                _subscription.TrySetFirst(source.SubscribeSafe(this));
             }
 
             protected override void Dispose(bool disposing)
             {
                 if (disposing)
                 {
-                    Disposable.TryDispose(ref _subscription);
+                    _subscription.Dispose();
                 }
+
                 base.Dispose(disposing);
             }
 
@@ -117,7 +118,7 @@ namespace System.Reactive.Linq.ObservableImpl
             {
                 if (!Volatile.Read(ref _once) && error is TException e)
                 {
-                    var result = default(IObservable<TSource>);
+                    IObservable<TSource> result;
                     try
                     {
                         result = _handler(e);
@@ -129,7 +130,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     }
 
                     Volatile.Write(ref _once, true);
-                    Disposable.TrySetSerial(ref _subscription, result.SubscribeSafe(this));
+                    _subscription.Disposable = result.SubscribeSafe(this);
                 }
                 else
                 {

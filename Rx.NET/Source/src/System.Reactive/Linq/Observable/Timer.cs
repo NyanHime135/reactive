@@ -1,5 +1,5 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the Apache 2.0 License.
+// The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
 using System.Reactive.Concurrency;
@@ -29,7 +29,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     _dueTime = dueTime;
                 }
 
-                protected override _ CreateSink(IObserver<long> observer) => new _(observer);
+                protected override _ CreateSink(IObserver<long> observer) => new(observer);
 
                 protected override void Run(_ sink) => sink.Run(this, _dueTime);
             }
@@ -44,7 +44,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     _dueTime = dueTime;
                 }
 
-                protected override _ CreateSink(IObserver<long> observer) => new _(observer);
+                protected override _ CreateSink(IObserver<long> observer) => new(observer);
 
                 protected override void Run(_ sink) => sink.Run(this, _dueTime);
             }
@@ -95,7 +95,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     _dueTime = dueTime;
                 }
 
-                protected override _ CreateSink(IObserver<long> observer) => new _(_period, observer);
+                protected override _ CreateSink(IObserver<long> observer) => new(_period, observer);
 
                 protected override void Run(_ sink) => sink.Run(this, _dueTime);
             }
@@ -110,7 +110,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     _dueTime = dueTime;
                 }
 
-                protected override _ CreateSink(IObserver<long> observer) => new _(_period, observer);
+                protected override _ CreateSink(IObserver<long> observer) => new(_period, observer);
 
                 protected override void Run(_ sink) => sink.Run(this, _dueTime);
             }
@@ -128,7 +128,7 @@ namespace System.Reactive.Linq.ObservableImpl
 
                 public void Run(Periodic parent, DateTimeOffset dueTime)
                 {
-                    SetUpstream(parent._scheduler.Schedule(this, dueTime, (innerScheduler, @this) => @this.InvokeStart(innerScheduler)));
+                    SetUpstream(parent._scheduler.Schedule(this, dueTime, static (innerScheduler, @this) => @this.InvokeStart(innerScheduler)));
                 }
 
                 public void Run(Periodic parent, TimeSpan dueTime)
@@ -138,11 +138,11 @@ namespace System.Reactive.Linq.ObservableImpl
                     //
                     if (dueTime == _period)
                     {
-                        SetUpstream(parent._scheduler.SchedulePeriodic(this, _period, @this => @this.Tick()));
+                        SetUpstream(parent._scheduler.SchedulePeriodic(this, _period, static @this => @this.Tick()));
                     }
                     else
                     {
-                        SetUpstream(parent._scheduler.Schedule(this, dueTime, (innerScheduler, @this) => @this.InvokeStart(innerScheduler)));
+                        SetUpstream(parent._scheduler.Schedule(this, dueTime, static (innerScheduler, @this) => @this.InvokeStart(innerScheduler)));
                     }
                 }
 
@@ -169,7 +169,7 @@ namespace System.Reactive.Linq.ObservableImpl
                 }
 
                 private int _pendingTickCount;
-                private IDisposable _periodic;
+                private IDisposable? _periodic;
 
                 private IDisposable InvokeStart(IScheduler self)
                 {
@@ -225,7 +225,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     var d = new SingleAssignmentDisposable();
                     _periodic = d;
                     _index = 1;
-                    d.Disposable = self.SchedulePeriodic(this, _period, @this => @this.Tock());
+                    d.Disposable = self.SchedulePeriodic(this, _period, static @this => @this.Tock());
 
                     try
                     {
@@ -245,7 +245,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     //
                     if (Interlocked.Decrement(ref _pendingTickCount) > 0)
                     {
-                        var c = self.Schedule((@this: this, index: 1L), (tuple, action) => tuple.@this.CatchUp(tuple.index, action));
+                        var c = self.Schedule((@this: this, index: 1L), static (tuple, action) => tuple.@this.CatchUp(tuple.index, action));
 
                         return StableCompositeDisposable.Create(d, c);
                     }
@@ -283,7 +283,7 @@ namespace System.Reactive.Linq.ObservableImpl
                     }
                     catch (Exception e)
                     {
-                        _periodic.Dispose();
+                        _periodic!.Dispose(); // NB: _periodic is assigned before this runs.
                         e.Throw();
                     }
 
