@@ -255,4 +255,4 @@ csharp_space_between_square_brackets = false
 
 # Primary constructors
 # We find these something of a mixed bag.
-dotnet_diagnostic.IDE0290.severity = none
+dotnet_diagnostic.IDE0290.severity = none.
